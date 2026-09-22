@@ -1,0 +1,3 @@
+branch,fit_only_on_train,raw_feature_count,qml_feature_count,pca_explained_variance_pct,train_min_angle,train_max_angle,test_min_angle,test_max_angle,pauli_bound_satisfied,client_distribution
+Physical,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted strictly on X_train)",12,12,100.0,-3.1416,3.1416,-3.1416,3.1416,True,"[1313, 825, 883, 2848, 3633]"
+Network,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted strictly on X_train)",14,12,99.99,-3.1416,3.1416,-3.1416,3.1416,True,"[16609, 54428, 80435, 14566, 11252]"

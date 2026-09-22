@@ -1,0 +1,23 @@
+{
+    "taxonomy_classes": {
+        "0": "BENIGN",
+        "1": "GPS_SPOOFING",
+        "2": "GPS_JAMMING",
+        "3": "FALSE_DATA_INJECTION",
+        "4": "REPLAY_ATTACK",
+        "5": "EVIL_TWIN",
+        "6": "DENIAL_OF_SERVICE",
+        "7": "RECONNAISSANCE",
+        "8": "MALWARE_INJECTION"
+    },
+    "binary_classes": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "num_qubits": 12,
+    "quantum_angle_range": [
+        -3.141592653589793,
+        3.141592653589793
+    ],
+    "fdi_note": "Dataset_T-ITS.csv contains network-side FDI packets but zero physical-side FDI sensor rows."
+}

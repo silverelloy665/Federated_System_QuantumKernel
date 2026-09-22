@@ -1,0 +1,7 @@
+file_key,file_name,path,size_mb,sha256,is_exact_duplicate,duplicate_of
+uavids,UAVIDS-2025.csv,C:\Users\Aarush\OneDrive\Desktop\UAVIDS-2025.csv,19.13,d50d339f68be7b23f0bf089dd438b20a1835c13182d8641220538121440164d0,False,N/A
+uav_ndd,UAV-NDD CSV.zip,C:\Users\Aarush\OneDrive\Desktop\UAV-NDD CSV.zip,288.35,edc69bea34bd8fa096a1b69d05b7f6c078e92d2fba03cee19f1999399b7de6b1,False,N/A
+csv_iot,CSV.zip,C:\Users\Aarush\OneDrive\Desktop\CSV.zip,1364.01,e211e878d2f39226ea3a854683f91ae6175b628807ee96eeecb7a04a36a28dbd,False,N/A
+flows_iscx,GeneratedLabelledFlows.zip,C:\Users\Aarush\OneDrive\Desktop\GeneratedLabelledFlows.zip,270.73,7bdbef286f8893f31c6db12105fa097fa5c2dcc6733179037a08129d150ea27a,False,N/A
+cve_ml,MachineLearningCSV.zip,C:\Users\Aarush\OneDrive\Desktop\MachineLearningCSV.zip,224.21,c3f26274b36c837ccf28ffd2dbf4582941c30b3ee70a635c6e5b2f87c4727928,False,N/A
+tits,Dataset_T-ITS.csv,C:\Users\Aarush\OneDrive\Desktop\Dataset_T-ITS.csv,5.86,cae41d8cd6107f7ec1d6ea6ddcebc64b9e80574a15ee538dd2f9968821dc3421,False,N/A

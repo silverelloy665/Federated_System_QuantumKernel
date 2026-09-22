@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwarmGuard Dataset Quality & Preprocessing Report</title>
+    <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-card: #111827;
+            --bg-card-hover: #1f2937;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --border-color: #374151;
+        }
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2.5rem;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1350px;
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .badge {
+            padding: 0.35rem 0.8rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .badge-purple { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .stat-val { font-size: 2rem; font-weight: 800; margin: 0.3rem 0; }
+        .stat-sub { color: var(--text-secondary); font-size: 0.88rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.88rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th { color: var(--text-secondary); background: rgba(17, 24, 39, 0.8); }
+        .quantum-box {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        pre {
+            background: #030712;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>SwarmGuard Dataset Preprocessing Report</h1>
+                <div style="color:var(--text-secondary); font-size:0.95rem;">Two-Branch Federated Quantum-Kernel UAV Intrusion Detection System</div>
+            </div>
+            <div class="badge badge-success">&#10003; Zero Data Leakage Verified | Elapsed: 32.8s</div>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <span class="badge badge-blue">Network Branch</span>
+                <div class="stat-val">221,613</div>
+                <div class="stat-sub">Train: 177,290 | Test: 44,323</div>
+                <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--accent-cyan);">
+                    Features: 14 &rarr; 12 Qubits (Exp Var: 100.0%)
+                </div>
+            </div>
+
+            <div class="card">
+                <span class="badge badge-purple">Physical / Telemetry Branch</span>
+                <div class="stat-val">11,878</div>
+                <div class="stat-sub">Train: 9,502 | Test: 2,376</div>
+                <div style="margin-top:0.5rem; font-size:0.85rem; color:#c084fc;">
+                    Kinematics: 12 &rarr; 12 Qubits (Exp Var: 100.0%)
+                </div>
+            </div>
+
+            <div class="card">
+                <span class="badge badge-success">Federated Non-IID Swarm</span>
+                <div class="stat-val">5 Clients</div>
+                <div class="stat-sub">Dirichlet Concentration &alpha; = 0.5</div>
+                <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--text-secondary);">
+                    Simulated heterogeneous UAV swarm nodes
+                </div>
+            </div>
+
+            <div class="card">
+                <span class="badge badge-success">Quantum Circuit State</span>
+                <div class="stat-val">12 Qubits</div>
+                <div class="stat-sub">Pauli Phase Angle Range: [&minus;&pi;, &pi;]</div>
+                <div style="margin-top:0.5rem; font-size:0.85rem; color:var(--accent-green);">
+                    Strictly Bounded in [&minus;3.1416, 3.1416]
+                </div>
+            </div>
+        </div>
+
+        <div class="quantum-box">
+            <h3 style="color:#c084fc; margin-bottom:0.5rem;">&#9889; 12-Qubit Quantum Kernel Encoding Verification</h3>
+            <p style="color:var(--text-secondary); margin-bottom:1rem;">
+                Continuous physical kinematic features and network traffic features have been standardized, compressed to 12 dimensions,
+                and strictly mapped into the Pauli rotation angle space <code>[&minus;&pi;, &pi;]</code> for 12-qubit quantum state encoding:
+            </p>
+            <div style="display:flex; gap:2rem; flex-wrap:wrap; font-size:0.9rem;">
+                <div><strong>Network Bounds:</strong> <code>[-3.1416, 3.1416]</code></div>
+                <div><strong>Physical Bounds:</strong> <code>[-3.1416, 3.1416]</code></div>
+                <div><strong>Zero Leakage:</strong> <code>Transformers fitted strictly on X_train</code></div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3>&#128196; Preprocessed Directory Structure (MERGED_CSV)</h3>
+            <pre>
+MERGED_CSV/
+├── reports/
+│   ├── dataset_inventory.csv
+│   ├── duplicate_file_report.csv
+│   ├── deduplication_report.csv
+│   ├── missing_value_report.csv
+│   ├── feature_mapping.csv
+│   ├── label_mapping.csv
+│   └── data_leakage_report.csv
+├── centralized/
+│   ├── physical_branch_train_test.npz
+│   └── network_branch_train_test.npz
+├── federated_clients/
+│   ├── physical/ (client_1.npz ... client_5.npz)
+│   └── network/ (client_1.npz ... client_5.npz)
+└── preprocessing_objects/
+    ├── physical_scaler.pkl
+    ├── physical_pca_12.pkl
+    ├── network_scaler.pkl
+    ├── network_pca_12.pkl
+    └── label_mappings.json
+            </pre>
+        </div>
+    </div>
+</body>
+</html>

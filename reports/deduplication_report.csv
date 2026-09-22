@@ -1,0 +1,3 @@
+branch,raw_rows,retained_rows,exact_duplicates_removed,dropped_columns
+Physical,12516,11878,638,None
+Network,274429,221613,52816,protocol_type

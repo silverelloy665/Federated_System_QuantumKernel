@@ -1,0 +1,17 @@
+dataset_name,source_file,branch,raw_rows,raw_cols,null_pct
+UAVIDS-2025,UAVIDS-2025.csv,Network,122171,23,0.0
+Dataset_T-ITS_Seg1_Network,Dataset_T-ITS.csv,Network,9425,38,0.0
+Dataset_T-ITS_Seg2_Physical,Dataset_T-ITS.csv,Physical,4290,17,0.0
+Dataset_T-ITS_Seg3_Network,Dataset_T-ITS.csv,Network,11671,38,0.0
+Dataset_T-ITS_Seg4_Physical,Dataset_T-ITS.csv,Physical,973,17,0.0
+Dataset_T-ITS_Seg5_Network,Dataset_T-ITS.csv,Network,12006,38,0.0
+Dataset_T-ITS_Seg6_Physical,Dataset_T-ITS.csv,Physical,973,17,0.0
+Dataset_T-ITS_Seg7_Network,Dataset_T-ITS.csv,Network,5683,35,0.0
+Dataset_T-ITS_Seg8_Physical,Dataset_T-ITS.csv,Physical,5473,22,0.0
+Dataset_T-ITS_Seg9_Network,Dataset_T-ITS.csv,Network,3473,35,0.0
+Dataset_T-ITS_Seg10_Physical,Dataset_T-ITS.csv,Physical,807,32,0.0
+UAV-NDD_Case1,UAV-NDD CSV.zip,Network,60000,45,0.0
+UAV-NDD_AccessPoint_Case2,UAV-NDD CSV.zip,Network,10000,51,0.0
+UAV-NDD_GSC_Case3,UAV-NDD CSV.zip,Network,10000,85,0.0
+CIC_IoT_Proxies,CSV.zip,Network,20000,40,0.0
+CICIDS2017_Flows,MachineLearningCSV.zip,Network,10000,79,0.0

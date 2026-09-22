@@ -1,0 +1,20 @@
+# Python cache and environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+
+# Raw dataset archives and large raw CSVs (>100MB GitHub limit)
+*.zip
+*.csv
+*.pcap
+!reports/*.csv
+!data/raw/physical/hassler_mughal/Dataset_T-ITS.csv
+
+# Temporary and log files
+*.log
+.DS_Store
+Thumbs.db
