@@ -1,3 +1,5 @@
+# Federated_System_QuantumKernel
+SwarmGuard is a federated quantum intrusion detection system for autonomous UAV swarms. A decoupled dual-branch 16-qubit QCNN separately classifies network flows and physical telemetry, trained via FedAvg with circular-mean aggregation for periodic parameters, cutting swarm communication overhead over 99.9 percent versus classical deep IDS models.
 # SwarmGuard: Federated Quantum-Kernel UAV Intrusion Detection System
 
 SwarmGuard is a federated quantum machine learning intrusion detection system engineered for autonomous UAV swarms. It utilizes a decoupled **Two-Branch Architecture** that independently processes cyber-physical telemetry and network traffic flows, feeding a 12-qubit quantum kernel and trained via Federated Learning (FedAvg with non-IID Dirichlet partitioning $\alpha=0.5$).
