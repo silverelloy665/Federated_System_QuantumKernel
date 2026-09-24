@@ -109,6 +109,12 @@ def execute_pipeline(config: Optional[PipelineConfig] = None):
     # Auto-sync documentation and reports
     if config.write_reports:
         sync_readme_documentation(config)
+        try:
+            from scripts.generate_project_documentation import ProjectDocumentationGenerator
+            doc_gen = ProjectDocumentationGenerator(config)
+            doc_gen.generate_workbook()
+        except Exception as e:
+            print(f"[WARNING] Could not auto-generate Excel documentation workbook: {e}", flush=True)
 
     print(f"[SUCCESS] All pipeline artifacts generated at: {config.output_dir}")
     print(f"[SUCCESS] View interactive report at: {html_path}\n")

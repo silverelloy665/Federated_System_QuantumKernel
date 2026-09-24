@@ -1,59 +1,59 @@
 {
-    "timestamp": "2026-09-24 08:18:02",
+    "timestamp": "2026-09-24 08:39:11",
     "qiskit_version": "2.3.1",
-    "ibm_backend": "ibm_kingston",
+    "ibm_backend": "ibm_fez",
     "hardware_qubits": 156,
-    "kernel_circuit_depth": 162,
+    "kernel_circuit_depth": 159,
     "transpiled_operations": {
-        "sx": 106,
-        "rz": 100,
+        "sx": 107,
+        "rz": 96,
         "cz": 42,
         "measure": 12,
-        "x": 2
+        "x": 3
     },
     "physical_branch": {
         "num_qubits": 12,
         "angle_bounds": [
-            -3.141592653589793,
+            0.0,
             3.141592653589793
         ],
         "self_fidelity_benign": 1.0,
         "self_fidelity_attack": 1.0,
-        "cross_fidelity": 0.0
+        "cross_fidelity": 0.17041015625
     },
     "network_branch": {
         "num_qubits": 12,
         "angle_bounds": [
-            -3.141592653589793,
+            0.0,
             3.141592653589793
         ],
         "self_fidelity_benign": 1.0,
         "self_fidelity_attack": 1.0,
-        "cross_fidelity": 0.0
+        "cross_fidelity": 0.00048828125
     },
     "gram_matrix": [
         [
             1.0,
-            0.0,
-            0.0,
+            0.18310546875,
+            0.00048828125,
             0.0
         ],
         [
-            0.0,
+            0.171875,
             1.0,
-            0.0,
+            0.001953125,
             0.0
         ],
         [
-            0.0,
-            0.0,
+            0.00048828125,
+            0.0029296875,
             1.0,
-            0.0
+            0.00048828125
         ],
         [
             0.0,
             0.0,
-            0.0,
+            0.00048828125,
             1.0
         ]
     ],

@@ -1,3 +1,3 @@
 branch,fit_only_on_train,raw_features_count,qml_features_count,pca_explained_variance_pct,pca_dimensionality_reduced,pca_reduction_status,train_min_bound,train_max_bound,test_min_bound,test_max_bound,pauli_bound_satisfied
-Network,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted on X_train only)",14,12,99.28,True,REDUCED (14 -> 12),-3.1416,3.1416,-3.1416,3.1416,True
-Physical,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted on X_train only)",16,12,92.82,True,REDUCED (16 -> 12),-3.1416,3.1416,-3.1416,3.1416,True
+Network,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted on X_train only)",14,12,99.28,True,REDUCED (14 -> 12),0.0,3.1416,0.0,3.1416,True
+Physical,"TRUE (Imputer, Scaler, PCA, AngleScaler fitted on X_train only)",16,12,92.82,True,REDUCED (16 -> 12),0.0,3.1416,0.0,3.1416,True

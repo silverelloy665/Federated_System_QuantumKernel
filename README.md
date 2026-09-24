@@ -29,6 +29,8 @@ SwarmGuard is a federated quantum machine learning intrusion detection preproces
 | `7` | **Replay** | `1 (ATTACK)` | Replayed telemetry commands and network packets |
 | `8` | **Recon_Infiltration** | `1 (ATTACK)` | Port scans, ping sweep, OS fingerprinting, malware/backdoor |
 
+
+
 ### 4. 12-Qubit Quantum Kernel Encoding
 * Features are standardized and compressed to 12 orthogonal dimensions matching the 12-qubit quantum register.
 * PCA features are scaled into the Pauli rotation angle space $[-\pi, \pi]$:

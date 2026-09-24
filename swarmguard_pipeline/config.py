@@ -124,7 +124,7 @@ class PipelineConfig:
 
     # Quantum 12-Qubit Parameters
     num_qubits: int = 12
-    quantum_angle_min: float = -np.pi
+    quantum_angle_min: float = 0.0
     quantum_angle_max: float = np.pi
 
     # Sample capacity limits for balanced processing (memory & speed efficiency)

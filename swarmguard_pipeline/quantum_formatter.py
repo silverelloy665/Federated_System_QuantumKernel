@@ -40,10 +40,11 @@ SKEWED_NETWORK_FEATURES = [
 
 class QuantumPhaseAngleScaler:
     """
-    Scales PCA components into the Pauli rotation angle range [-pi, pi].
+    Scales PCA components into the Pauli rotation angle range [0, pi].
     Fitted strictly on training data with safe clipping for inference / test data.
+    Prevents Ry(theta) / Ry(-theta) Z-basis measurement aliasing.
     """
-    def __init__(self, angle_min: float = -np.pi, angle_max: float = np.pi):
+    def __init__(self, angle_min: float = 0.0, angle_max: float = np.pi):
         self.angle_min = angle_min
         self.angle_max = angle_max
         self.min_vals = None
@@ -203,11 +204,11 @@ class QuantumFormatter:
             X_train_qml = angle_scaler.fit_transform(X_train_pca)
             X_test_qml = angle_scaler.transform(X_test_pca)
 
-            # Verify Pauli Rotation Range
+            # Verify Pauli Rotation Range [0, pi]
             train_min, train_max = np.min(X_train_qml), np.max(X_train_qml)
             test_min, test_max = np.min(X_test_qml), np.max(X_test_qml)
             print(f"    Quantum Angle Check:", flush=True)
-            print(f"      Train Bounds: [{train_min:.4f}, {train_max:.4f}] (Pauli Range [-3.1416, 3.1416])", flush=True)
+            print(f"      Train Bounds: [{train_min:.4f}, {train_max:.4f}] (Pauli Range [0.0000, 3.1416])", flush=True)
             print(f"      Test  Bounds: [{test_min:.4f}, {test_max:.4f}]", flush=True)
 
             # 6. Save Preprocessing Objects (.pkl) in both preprocessing_dir and scalers_dir
@@ -288,7 +289,7 @@ class QuantumFormatter:
                 "train_max_bound": round(float(train_max), 4),
                 "test_min_bound": round(float(test_min), 4),
                 "test_max_bound": round(float(test_max), 4),
-                "pauli_bound_satisfied": bool(test_min >= -np.pi - 1e-4 and test_max <= np.pi + 1e-4)
+                "pauli_bound_satisfied": bool(test_min >= -1e-4 and test_max <= np.pi + 1e-4)
             }
             self.leakage_records.append(leakage_rec)
 
