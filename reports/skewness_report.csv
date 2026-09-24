@@ -1,0 +1,15 @@
+branch,feature_name,skewness_before,skewness_after,log1p_applied
+Network,flow_duration,11.3398,1.7732,True
+Network,tx_packets,1.7776,0.4745,True
+Network,rx_packets,109.5316,1.1802,True
+Network,tx_bytes,49.6244,0.7222,True
+Network,rx_bytes,261.048,0.1311,True
+Network,packet_rate,27.2693,0.8356,True
+Network,byte_rate,8.4067,0.5889,True
+Network,mean_packet_size,6.1101,-0.2846,True
+Network,mean_delay,22.2392,5.8548,True
+Network,lost_packets,191.5412,1.1113,True
+Network,ttl_or_hops,52.7042,52.7042,False
+Network,total_bytes,259.6414,259.6414,False
+Network,total_packets,1.7774,1.7774,False
+Network,packet_size_ratio,15.9935,15.9935,False

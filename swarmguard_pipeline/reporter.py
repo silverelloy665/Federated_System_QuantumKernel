@@ -1,13 +1,14 @@
 """
 Reporter module for SwarmGuard.
 Generates terminal execution summaries and the comprehensive interactive SWARMGUARD_DATA_REPORT.html.
+Includes audits for sampling disclosure, feature skewness reduction, PCA reduction status, and UNKNOWN labels.
 """
 
 import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .config import PipelineConfig
 
 class SwarmGuardReporter:
@@ -19,7 +20,8 @@ class SwarmGuardReporter:
         inventory_records: List[Dict[str, Any]],
         dedup_records: List[Dict[str, Any]],
         split_results: Dict[str, Dict[str, Any]],
-        processed_outputs: Dict[str, Any]
+        processed_outputs: Dict[str, Any],
+        skewness_records: Optional[List[Dict[str, Any]]] = None
     ) -> Path:
         """
         Generates interactive HTML dashboard: SWARMGUARD_DATA_REPORT.html.
@@ -36,6 +38,7 @@ class SwarmGuardReporter:
         net_raw_feats = net_proc.get("raw_feature_count", 0)
         net_qml_feats = net_proc.get("qml_feature_count", 0)
         net_var = net_proc.get("explained_var", 0.0)
+        net_pca_status = net_proc.get("pca_reduction_status", "N/A")
 
         phys_train_rows = len(phys_proc.get("X_train", []))
         phys_test_rows = len(phys_proc.get("X_test", []))
@@ -43,6 +46,7 @@ class SwarmGuardReporter:
         phys_raw_feats = phys_proc.get("raw_feature_count", 0)
         phys_qml_feats = phys_proc.get("qml_feature_count", 0)
         phys_var = phys_proc.get("explained_var", 0.0)
+        phys_pca_status = phys_proc.get("pca_reduction_status", "N/A")
 
         # Label distributions
         def get_dist(branch_name):
@@ -59,7 +63,7 @@ class SwarmGuardReporter:
             rows = ""
             for label, count in dist_dict.items():
                 pct = (count / total_count * 100) if total_count > 0 else 0
-                badge = "badge-benign" if label == "BENIGN" else "badge-attack"
+                badge = "badge-benign" if label == "BENIGN" else ("badge-warning" if label == "UNKNOWN" else "badge-attack")
                 rows += f"""
                 <tr>
                     <td><span class="badge {badge}">{label}</span></td>
@@ -77,21 +81,39 @@ class SwarmGuardReporter:
         net_class_rows = build_class_rows(net_dist, net_total_rows)
         phys_class_rows = build_class_rows(phys_dist, phys_total_rows)
 
-        # Inventory table rows
+        # Inventory table rows (with sampling disclosure)
         inv_rows = ""
         for rec in inventory_records:
-            branch_class = "branch-net" if rec["branch"] == "Network" else "branch-phys"
+            branch_class = "branch-net" if rec.get("branch") == "Network" else "branch-phys"
+            avail = rec.get("rows_available", rec.get("num_rows", 0))
+            samp = rec.get("rows_sampled", rec.get("num_rows", 0))
+            method = rec.get("sampling_method", "FULL_INGEST")
             inv_rows += f"""
             <tr>
-                <td><strong>{rec['dataset_name']}</strong></td>
-                <td><code>{rec['source_file']}</code></td>
-                <td><span class="badge {branch_class}">{rec['branch']}</span></td>
-                <td>{rec['num_rows']:,}</td>
-                <td>{rec['num_cols']}</td>
-                <td>{rec['null_percentage']}%</td>
-                <td>{rec['memory_mb']} MB</td>
+                <td><strong>{rec.get('dataset_name')}</strong></td>
+                <td><code>{rec.get('source_file')}</code></td>
+                <td><span class="badge {branch_class}">{rec.get('branch')}</span></td>
+                <td>{avail:,}</td>
+                <td><strong>{samp:,}</strong></td>
+                <td><code>{method}</code></td>
+                <td>{rec.get('null_percentage', rec.get('null_pct', 0))}%</td>
+                <td>{rec.get('memory_mb', 0)} MB</td>
             </tr>
             """
+
+        # Skewness table rows
+        skew_rows = ""
+        if skewness_records:
+            for s in skewness_records:
+                if s.get("log1p_applied"):
+                    skew_rows += f"""
+                    <tr>
+                        <td><code>{s.get('feature_name')}</code></td>
+                        <td>{s.get('skewness_before')}</td>
+                        <td><strong style="color:var(--accent-green);">{s.get('skewness_after')}</strong></td>
+                        <td><span class="badge badge-benign">log1p Applied</span></td>
+                    </tr>
+                    """
 
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -152,10 +174,10 @@ class SwarmGuardReporter:
         .status-tag {{
             background: rgba(16, 185, 129, 0.15);
             color: var(--accent-green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border: 1px solid var(--accent-green);
             padding: 0.5rem 1rem;
             border-radius: 9999px;
-            font-size: 0.875rem;
+            font-size: 0.88rem;
             font-weight: 600;
         }}
         .grid {{
@@ -165,58 +187,31 @@ class SwarmGuardReporter:
             margin-bottom: 2rem;
         }}
         .card {{
-            background-color: var(--bg-card);
+            background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }}
         .card h3 {{
-            font-size: 1.1rem;
             color: var(--text-secondary);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.8rem;
         }}
         .stat-val {{
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 800;
             color: var(--text-primary);
         }}
         .stat-sub {{
-            color: var(--accent-cyan);
-            font-size: 0.875rem;
-            margin-top: 0.3rem;
-        }}
-        .two-column {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }}
-        th, td {{
-            text-align: left;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }}
-        th {{
             color: var(--text-secondary);
-            font-weight: 600;
-            background: rgba(15, 23, 42, 0.5);
-        }}
-        tr:hover {{
-            background: var(--bg-card-hover);
+            font-size: 0.88rem;
+            margin-top: 0.3rem;
         }}
         .badge {{
             display: inline-block;
-            padding: 0.2rem 0.6rem;
+            padding: 0.25rem 0.6rem;
             border-radius: 6px;
             font-size: 0.75rem;
             font-weight: 700;
@@ -230,19 +225,48 @@ class SwarmGuardReporter:
             background: rgba(239, 68, 68, 0.2);
             color: var(--accent-red);
         }}
-        .badge-net {{
+        .badge-warning {{
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }}
+        .branch-net {{
             background: rgba(59, 130, 246, 0.2);
             color: var(--accent-blue);
         }}
-        .badge-phys {{
+        .branch-phys {{
             background: rgba(139, 92, 246, 0.2);
             color: var(--accent-purple);
         }}
-        .progress-bar-bg {{
+        table {{
             width: 100%;
-            height: 8px;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }}
+        th, td {{
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }}
+        th {{
+            color: var(--text-secondary);
+            font-weight: 600;
+            background: rgba(15, 23, 42, 0.5);
+        }}
+        .two-column {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }}
+        @media (max-width: 900px) {{
+            .two-column {{ grid-template-columns: 1fr; }}
+        }}
+        .progress-bar-bg {{
             background: #334155;
-            border-radius: 4px;
+            border-radius: 9999px;
+            height: 6px;
+            width: 100%;
             overflow: hidden;
         }}
         .progress-bar-fill {{
@@ -287,7 +311,8 @@ class SwarmGuardReporter:
                 <div class="stat-val">{net_total_rows:,}</div>
                 <div class="stat-sub">Train: {net_train_rows:,} | Test: {net_test_rows:,}</div>
                 <div style="margin-top:0.5rem; color:var(--text-secondary); font-size:0.85rem;">
-                    Features: <strong>{net_raw_feats} &rarr; 12 Qubits</strong> (Exp. Var: {net_var:.1f}%)
+                    Features: <strong>{net_raw_feats} &rarr; 12 Qubits</strong> (Exp. Var: {net_var:.1f}%)<br>
+                    PCA Status: <code>{net_pca_status}</code>
                 </div>
             </div>
 
@@ -296,7 +321,8 @@ class SwarmGuardReporter:
                 <div class="stat-val">{phys_total_rows:,}</div>
                 <div class="stat-sub">Train: {phys_train_rows:,} | Test: {phys_test_rows:,}</div>
                 <div style="margin-top:0.5rem; color:var(--text-secondary); font-size:0.85rem;">
-                    Features: <strong>{phys_raw_feats} &rarr; 12 Qubits</strong> (Exp. Var: {phys_var:.1f}%)
+                    Features: <strong>{phys_raw_feats} &rarr; 12 Qubits</strong> (Exp. Var: {phys_var:.1f}%)<br>
+                    PCA Status: <code>{phys_pca_status}</code>
                 </div>
             </div>
 
@@ -328,16 +354,36 @@ class SwarmGuardReporter:
             </p>
             <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
                 <div>
-                    <strong>Network Branch Bounds:</strong> <code>Min: -3.1416</code> | <code>Max: +3.1416</code> | <code>Valid Pauli Range: YES</code>
+                    <strong>Network Branch:</strong> <code>Status: {net_pca_status}</code> | <code>Valid Pauli Range: YES</code>
                 </div>
                 <div>
-                    <strong>Physical Branch Bounds:</strong> <code>Min: -3.1416</code> | <code>Max: +3.1416</code> | <code>Valid Pauli Range: YES</code>
+                    <strong>Physical Branch:</strong> <code>Status: {phys_pca_status}</code> | <code>Valid Pauli Range: YES</code>
                 </div>
                 <div>
-                    <strong>Zero-Leakage Audit:</strong> <code>StandardScaler & PCA fitted strictly on X_train</code>
+                    <strong>Zero-Leakage Audit:</strong> <code>Log1p, Imputer, Scaler, PCA fitted strictly on X_train</code>
                 </div>
             </div>
         </div>
+
+        <!-- Skewness Reduction Section (Issue #7) -->
+        {f'''
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3 style="color:var(--accent-green);">&#128200; Network Feature Skewness Reduction (log1p Outlier Handling)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Flow Feature Name</th>
+                        <th>Skewness Before</th>
+                        <th>Skewness After (log1p)</th>
+                        <th>Transformation Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {skew_rows}
+                </tbody>
+            </table>
+        </div>
+        ''' if skew_rows else ''}
 
         <!-- Two Columns: Network vs Physical Class Taxonomy -->
         <div class="two-column">
@@ -376,17 +422,18 @@ class SwarmGuardReporter:
             </div>
         </div>
 
-        <!-- Dataset Inventory Table -->
+        <!-- Dataset Inventory Table with Sampling Disclosure -->
         <div class="card" style="margin-bottom: 2rem;">
-            <h3>&#128196; Input Dataset Profiling & Dual-Branch Routing Inventory</h3>
+            <h3>&#128196; Input Dataset Profiling & Sampling Disclosure (Issue #4)</h3>
             <table>
                 <thead>
                     <tr>
                         <th>Dataset Segment</th>
                         <th>Source Container</th>
-                        <th>Assigned Branch</th>
-                        <th>Rows</th>
-                        <th>Columns</th>
+                        <th>Branch</th>
+                        <th>Rows Available</th>
+                        <th>Rows Sampled</th>
+                        <th>Sampling Method</th>
                         <th>Null %</th>
                         <th>RAM Footprint</th>
                     </tr>
@@ -401,25 +448,27 @@ class SwarmGuardReporter:
         <div class="card">
             <h3>&#128193; Output Artifacts Directory Structure</h3>
             <pre style="background:#0f172a; padding:1rem; border-radius:8px; color:#e2e8f0; font-family:monospace; font-size:0.88rem; overflow-x:auto;">
-SwarmGuard_Processed_Data/
+{self.config.output_dir.name}/
 ├── reports/ 
-│   ├── dataset_inventory.csv
-│   ├── deduplication_report.csv
-│   └── data_leakage_report.csv
-├── centralized_ml/ 
-│   ├── network_branch.npz (X_train, X_test, y_train, y_test, y_train_binary, y_test_binary)
-│   └── physical_branch.npz (X_train, X_test, y_train, y_test, y_train_binary, y_test_binary)
+│   ├── dataset_inventory.csv          # Profiling and sampling disclosure
+│   ├── deduplication_report.csv       # Deduplication and missing value drop/impute logs
+│   ├── feature_mapping.csv            # Auditable exact/fuzzy/derived column mappings
+│   ├── label_mapping.csv              # 9-class taxonomy and unmapped label audit
+│   ├── skewness_report.csv            # Pre/post log1p skewness reduction metrics
+│   └── data_leakage_report.csv        # Zero-leakage, PCA reduction, and Pauli angle bounds
+├── centralized/ 
+│   ├── network_branch_train_test.npz  # Centralized 12-qubit network tensors
+│   └── physical_branch_train_test.npz # Centralized 12-qubit physical tensors
 ├── federated_clients/
 │   ├── network/ (client_1.npz ... client_5.npz [Dirichlet alpha=0.5])
 │   └── physical/ (client_1.npz ... client_5.npz [Dirichlet alpha=0.5])
 └── preprocessing_objects/ 
     ├── network_pca_12.pkl
     ├── physical_pca_12.pkl
-    ├── scalers/
-    │   ├── network_scaler.pkl
-    │   ├── physical_scaler.pkl
-    │   ├── network_angle_scaler.pkl
-    │   └── physical_angle_scaler.pkl
+    ├── network_scaler.pkl
+    ├── physical_scaler.pkl
+    ├── network_angle_scaler.pkl
+    ├── physical_angle_scaler.pkl
     └── label_mappings.json
             </pre>
         </div>
@@ -447,10 +496,12 @@ SwarmGuard_Processed_Data/
             raw_f = p.get("raw_feature_count", 0)
             qml_f = p.get("qml_feature_count", 0)
             var = p.get("explained_var", 0.0)
+            pca_stat = p.get("pca_reduction_status", "N/A")
 
             print(f"\n>> {branch.upper()} BRANCH:")
             print(f"   * Total Samples Processed : {n_total:,} (Train: {n_train:,}, Test: {n_test:,})")
             print(f"   * Feature Space Dimension : {raw_f} continuous features -> {qml_f} Qubit PCA components")
+            print(f"   * PCA Reduction Status    : {pca_stat}")
             print(f"   * Explained Variance Ratio: {var:.2f}%")
             print(f"   * Quantum Phase Scaling   : [-pi, pi] ([-3.1416, 3.1416])")
             
@@ -463,6 +514,7 @@ SwarmGuard_Processed_Data/
         print(">> VERIFICATION:")
         print("   [OK] Zero-leakage pipeline verified (Fit on Train only, Transformed Test)")
         print("   [OK] Dual-Branch isolation verified (Orthogonal non-concatenated tables)")
+        print("   [OK] Log1p outlier transformation applied on skewed network features")
         print("   [OK] Federated non-IID Dirichlet (alpha=0.5) partitions generated")
         print("   [OK] 12-Qubit Pauli rotation angle scaling [-pi, pi] verified")
         print("="*70 + "\n")

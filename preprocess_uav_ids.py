@@ -20,6 +20,7 @@ import zipfile
 import openpyxl
 import numpy as np
 import pandas as pd
+import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 from sklearn.model_selection import train_test_split
@@ -30,6 +31,10 @@ from sklearn.impute import SimpleImputer
 # ==============================================================================
 # 1. CONFIGURATION & CONSTANTS
 # ==============================================================================
+# Ensure repository root is on sys.path
+repo_root = Path(__file__).resolve().parent
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
 class SwarmGuardConfig:
     # Potential source directories for raw datasets
@@ -38,6 +43,8 @@ class SwarmGuardConfig:
         Path(r"C:\Users\Aarush\Downloads"),
         Path(r"C:\Users\Aarush\Desktop"),
     ]
+from swarmguard_pipeline.config import PipelineConfig, SwarmGuardConfig, TAXONOMY_CLASSES
+from swarmguard_pipeline.run_pipeline import execute_pipeline, main
 
     # Target output directory
     OUTPUT_DIR = Path(r"C:\Users\Aarush\OneDrive\Desktop\MERGED_CSV")

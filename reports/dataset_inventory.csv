@@ -1,17 +1,17 @@
-dataset_name,source_file,branch,raw_rows,raw_cols,null_pct
-UAVIDS-2025,UAVIDS-2025.csv,Network,122171,23,0.0
-Dataset_T-ITS_Seg1_Network,Dataset_T-ITS.csv,Network,9425,38,0.0
-Dataset_T-ITS_Seg2_Physical,Dataset_T-ITS.csv,Physical,4290,17,0.0
-Dataset_T-ITS_Seg3_Network,Dataset_T-ITS.csv,Network,11671,38,0.0
-Dataset_T-ITS_Seg4_Physical,Dataset_T-ITS.csv,Physical,973,17,0.0
-Dataset_T-ITS_Seg5_Network,Dataset_T-ITS.csv,Network,12006,38,0.0
-Dataset_T-ITS_Seg6_Physical,Dataset_T-ITS.csv,Physical,973,17,0.0
-Dataset_T-ITS_Seg7_Network,Dataset_T-ITS.csv,Network,5683,35,0.0
-Dataset_T-ITS_Seg8_Physical,Dataset_T-ITS.csv,Physical,5473,22,0.0
-Dataset_T-ITS_Seg9_Network,Dataset_T-ITS.csv,Network,3473,35,0.0
-Dataset_T-ITS_Seg10_Physical,Dataset_T-ITS.csv,Physical,807,32,0.0
-UAV-NDD_Case1,UAV-NDD CSV.zip,Network,60000,45,0.0
-UAV-NDD_AccessPoint_Case2,UAV-NDD CSV.zip,Network,10000,51,0.0
-UAV-NDD_GSC_Case3,UAV-NDD CSV.zip,Network,10000,85,0.0
-CIC_IoT_Proxies,CSV.zip,Network,20000,40,0.0
-CICIDS2017_Flows,MachineLearningCSV.zip,Network,10000,79,0.0
+dataset_name,source_file,branch,rows_available,rows_sampled,sampling_method,raw_rows,raw_cols,num_rows,num_cols,null_pct,null_percentage,memory_mb,label_column,sample_labels,sample_columns
+UAVIDS-2025,UAVIDS-2025.csv,Network,122171,122171,FULL_INGEST,122171,23,122171,23,0.0,0.0,45.37,label,Sybil Attack; Blackhole Attack; Wormhole Attack; Flooding Attack; Normal Traffic,FlowID; FlowDuration/s; SrcAddr; SrcPort; DstAddr; DstPort; Protocol; TxPackets
+Dataset_T-ITS_Seg1_Network,Dataset_T-ITS.csv,Network,9425,9425,FULL_INGEST,9425,38,9425,38,0.0,0.0,3.16,class,benign,timestamp_c; frame.number; frame.len; frame.protocols; wlan.duration; wlan.ra; wlan.ta; wlan.da
+Dataset_T-ITS_Seg2_Physical,Dataset_T-ITS.csv,Physical,4290,4290,FULL_INGEST,4290,17,4290,17,0.0,0.0,0.75,class,benign,timestamp_p; height; x_speed; y_speed; z_speed; pitch; roll; yaw
+Dataset_T-ITS_Seg3_Network,Dataset_T-ITS.csv,Network,11671,11671,FULL_INGEST,11671,38,11671,38,0.0,0.0,3.95,class,DoS attack,timestamp_c; frame.number; frame.len; frame.protocols; wlan.duration; wlan.ra; wlan.ta; wlan.da
+Dataset_T-ITS_Seg4_Physical,Dataset_T-ITS.csv,Physical,973,973,FULL_INGEST,973,17,973,17,0.0,0.0,0.17,class,DoS,timestamp_p; height; x_speed; y_speed; z_speed; pitch; roll; yaw
+Dataset_T-ITS_Seg5_Network,Dataset_T-ITS.csv,Network,12006,12006,FULL_INGEST,12006,38,12006,38,0.0,0.0,4.02,class,Replay,timestamp_c; frame.number; frame.len; frame.protocols; wlan.duration; wlan.ra; wlan.ta; wlan.da
+Dataset_T-ITS_Seg6_Physical,Dataset_T-ITS.csv,Physical,973,973,FULL_INGEST,973,17,973,17,0.0,0.0,0.17,class,Replay,timestamp_p; height; x_speed; y_speed; z_speed; pitch; roll; yaw
+Dataset_T-ITS_Seg7_Network,Dataset_T-ITS.csv,Network,5683,5683,FULL_INGEST,5683,35,5683,35,0.0,0.0,1.79,class,evil_twin,timestamp_c; frame.number; frame.len; wlan.ta; wlan.sa; wlan.ra; wlan.da; wlan.bssid
+Dataset_T-ITS_Seg8_Physical,Dataset_T-ITS.csv,Physical,5473,5473,FULL_INGEST,5473,22,5473,22,0.0,0.0,1.18,class,evil_twin,timestamp_p; mid; x; y; z; pitch; roll; yaw
+Dataset_T-ITS_Seg9_Network,Dataset_T-ITS.csv,Network,3473,3473,FULL_INGEST,3473,35,3473,35,0.0,0.0,1.07,class,FDI,timestamp_c; frame.number; frame.len; wlan.ta; wlan.sa; wlan.ra; wlan.da; wlan.bssid
+Dataset_T-ITS_Seg10_Physical,Dataset_T-ITS.csv,Physical,807,807,FULL_INGEST,807,32,807,32,0.0,0.0,0.23,class,FDI,mid; x; y; z; mpitch; mroll; myaw; pitch
+UAV-NDD_Case1,UAV-NDD CSV.zip,Network,867842,60000,HEAD_SAMPLE_60000,60000,45,60000,45,0.0,0.0,48.37,Label,Normal; ICMP Flooding,frame.encap_type; frame.len; frame.number; frame.time_delta_displayed; frame.time_epoch; frame.time_relative; radiotap.channel.flags.cck; radiotap.channel.flags.ofdm
+UAV-NDD_AccessPoint_Case2,UAV-NDD CSV.zip,Network,631356,15000,HEAD_SAMPLE_15000,15000,51,15000,51,0.0,0.0,11.78,N/A,,frame.encap_type; frame.len; frame.number; frame.time_delta_displayed; frame.time_epoch; frame.time_relative; radiotap.channel.flags.cck; radiotap.channel.flags.ofdm
+UAV-NDD_GSC_Case3,UAV-NDD CSV.zip,Network,823632,15000,HEAD_SAMPLE_15000,15000,85,15000,85,0.0,0.0,12.08,Class,Benign; Reconnaissance; Bruteforce,uid; id.orig_h; id.orig_p; id.resp_h; duration; flow_duration; fwd_pkts_tot; bwd_pkts_tot
+CIC_IoT_Proxies,CSV.zip,Network,1545000,20000,STRATIFIED_CLUSTER_SAMPLE_20x1000,20000,40,20000,40,0.0,0.0,7.2,label,Backdoor_Malware; Benign_Final; BrowserHijacking; CommandInjection; DDoS-ACK_Fragmentation; DDoS-HTTP_Flood; DDoS-ICMP_Flood; DDoS-ICMP_Fragmentation,Header_Length; Protocol Type; Time_To_Live; Rate; fin_flag_number; syn_flag_number; rst_flag_number; psh_flag_number
+CICIDS2017_NetworkFlows,MachineLearningCSV.zip,Network,1600000,10000,HEAD_SAMPLE_5x2000,10000,79,10000,79,0.0,0.0,6.48,Label,BENIGN,Destination Port; Flow Duration; Total Fwd Packets; Total Backward Packets; Total Length of Fwd Packets; Total Length of Bwd Packets; Fwd Packet Length Max; Fwd Packet Length Min

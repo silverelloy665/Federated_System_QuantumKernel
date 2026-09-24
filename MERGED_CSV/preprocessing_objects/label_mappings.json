@@ -1,0 +1,22 @@
+{
+    "taxonomy_classes": {
+        "0": "BENIGN",
+        "1": "DoS",
+        "2": "DDoS",
+        "3": "Jamming_Deauth",
+        "4": "Spoofing_MITM",
+        "5": "FDI",
+        "6": "Routing_Attack",
+        "7": "Replay",
+        "8": "Recon_Infiltration"
+    },
+    "binary_classes": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "num_qubits": 12,
+    "quantum_angle_range": [
+        -3.141592653589793,
+        3.141592653589793
+    ]
+}

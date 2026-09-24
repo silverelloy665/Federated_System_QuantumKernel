@@ -1,0 +1,61 @@
+{
+    "timestamp": "2026-09-24 08:18:02",
+    "qiskit_version": "2.3.1",
+    "ibm_backend": "ibm_kingston",
+    "hardware_qubits": 156,
+    "kernel_circuit_depth": 162,
+    "transpiled_operations": {
+        "sx": 106,
+        "rz": 100,
+        "cz": 42,
+        "measure": 12,
+        "x": 2
+    },
+    "physical_branch": {
+        "num_qubits": 12,
+        "angle_bounds": [
+            -3.141592653589793,
+            3.141592653589793
+        ],
+        "self_fidelity_benign": 1.0,
+        "self_fidelity_attack": 1.0,
+        "cross_fidelity": 0.0
+    },
+    "network_branch": {
+        "num_qubits": 12,
+        "angle_bounds": [
+            -3.141592653589793,
+            3.141592653589793
+        ],
+        "self_fidelity_benign": 1.0,
+        "self_fidelity_attack": 1.0,
+        "cross_fidelity": 0.0
+    },
+    "gram_matrix": [
+        [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+        ],
+        [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+        ],
+        [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+        ],
+        [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ]
+    ],
+    "verification_status": "PASSED"
+}

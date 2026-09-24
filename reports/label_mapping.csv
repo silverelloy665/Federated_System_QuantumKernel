@@ -1,10 +1,43 @@
-class_id,standard_label,binary_label,binary_meaning,physical_sensor_fdi_flag
-0,BENIGN,0,BENIGN,STANDARD
-1,GPS_SPOOFING,1,ATTACK,STANDARD
-2,GPS_JAMMING,1,ATTACK,STANDARD
-3,FALSE_DATA_INJECTION,1,ATTACK,NO_PHYSICAL_FDI_ROWS_IN_TITS
-4,REPLAY_ATTACK,1,ATTACK,STANDARD
-5,EVIL_TWIN,1,ATTACK,STANDARD
-6,DENIAL_OF_SERVICE,1,ATTACK,STANDARD
-7,RECONNAISSANCE,1,ATTACK,STANDARD
-8,MALWARE_INJECTION,1,ATTACK,STANDARD
+class_id,standard_label,binary_label,raw_label,source_dataset,row_count,is_unmapped
+0,BENIGN,0,Normal Traffic,UAVIDS-2025,26172,False
+0,BENIGN,0,Normal,UAV-NDD_Case1,17949,False
+0,BENIGN,0,Normal,UAV-NDD_AccessPoint_Case2,15000,False
+0,BENIGN,0,BENIGN,CICIDS2017,10000,False
+0,BENIGN,0,benign,Dataset_T-ITS_Seg1_Network,9425,False
+0,BENIGN,0,benign,Dataset_T-ITS_Seg2_Physical,4290,False
+0,BENIGN,0,Benign_Final,CIC_IoT_Proxies,1000,False
+0,BENIGN,0,Benign,UAV-NDD_GSC_Case3,109,False
+1,DoS,1,ICMP Flooding,UAV-NDD_Case1,42051,False
+1,DoS,1,Flooding Attack,UAVIDS-2025,19726,False
+1,DoS,1,DoS attack,Dataset_T-ITS_Seg3_Network,11671,False
+1,DoS,1,DoS-HTTP_Flood,CIC_IoT_Proxies,1000,False
+1,DoS,1,DoS-SYN_Flood,CIC_IoT_Proxies,1000,False
+1,DoS,1,DoS,Dataset_T-ITS_Seg4_Physical,973,False
+2,DDoS,1,DDoS-ACK_Fragmentation,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-HTTP_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-ICMP_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-ICMP_Fragmentation,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-PSHACK_FLOOD,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-RSTFINFLOOD,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-SlowLoris,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-SynonymousIP_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-SYN_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-TCP_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-UDP_Flood,CIC_IoT_Proxies,1000,False
+2,DDoS,1,DDoS-UDP_Fragmentation,CIC_IoT_Proxies,1000,False
+3,Jamming_Deauth,1,evil_twin,Dataset_T-ITS_Seg7_Network,5683,False
+3,Jamming_Deauth,1,evil_twin,Dataset_T-ITS_Seg8_Physical,5473,False
+4,Spoofing_MITM,1,DNS_Spoofing,CIC_IoT_Proxies,1000,False
+5,FDI,1,FDI,Dataset_T-ITS_Seg9_Network,3473,False
+5,FDI,1,FDI,Dataset_T-ITS_Seg10_Physical,807,False
+6,Routing_Attack,1,Blackhole Attack,UAVIDS-2025,26110,False
+6,Routing_Attack,1,Wormhole Attack,UAVIDS-2025,26086,False
+6,Routing_Attack,1,Sybil Attack,UAVIDS-2025,24077,False
+7,Replay,1,Replay,Dataset_T-ITS_Seg5_Network,12006,False
+7,Replay,1,Replay,Dataset_T-ITS_Seg6_Physical,973,False
+8,Recon_Infiltration,1,Reconnaissance,UAV-NDD_GSC_Case3,14329,False
+8,Recon_Infiltration,1,Backdoor_Malware,CIC_IoT_Proxies,1000,False
+8,Recon_Infiltration,1,BrowserHijacking,CIC_IoT_Proxies,1000,False
+8,Recon_Infiltration,1,CommandInjection,CIC_IoT_Proxies,1000,False
+8,Recon_Infiltration,1,DictionaryBruteForce,CIC_IoT_Proxies,1000,False
+8,Recon_Infiltration,1,Bruteforce,UAV-NDD_GSC_Case3,562,False
