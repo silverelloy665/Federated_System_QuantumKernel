@@ -74,30 +74,23 @@ class QPUInferenceExecutor:
 
         print(f"\n[*] Submitting Inference Job to {self.backend.name}...")
         t0 = time.time()
-        job_id = f"ibm_{self.backend.name[:4]}_{int(time.time())}"
-        
-        # Run hardware job (or fallback to Aer hardware-noise model if queue is occupied)
-        try:
-            sampler = SamplerV2(mode=self.backend)
-            job = sampler.run([t_qc], shots=shots)
-            job_id = job.job_id()
-            print(f"    Submitted Job ID: {job_id}")
-            pub_res = job.result()[0]
-            counts = pub_res.data.meas.get_counts() if hasattr(pub_res.data, 'meas') else pub_res.data.c0.get_counts()
-            hw_p0 = counts.get("0", 0) / shots
-            hw_p1 = counts.get("1", 0) / shots
-            hw_z = hw_p0 - hw_p1
-        except Exception as e:
-            print(f"    [INFO] Live QPU execution queued/interrupted ({e}). Using hardware device model simulation.")
-            hw_counts = sim.run(t_qc, shots=shots).result().get_counts()
-            hw_p0 = hw_counts.get("0", 0) / shots
-            hw_p1 = hw_counts.get("1", 0) / shots
-            hw_z = hw_p0 - hw_p1
-            job_id = f"ibm_hw_transpiled_{int(time.time())}"
+
+        # Real hardware only: any failure propagates to the caller, which logs it as NOT_RUN.
+        # Never substitute simulator counts or a synthetic job ID for a hardware result.
+        sampler = SamplerV2(mode=self.backend)
+        job = sampler.run([t_qc], shots=shots)
+        job_id = job.job_id()
+        print(f"    Submitted Job ID: {job_id}")
+        pub_res = job.result()[0]
+        # SamplerV2 keys results by classical register name ("c" for QuantumCircuit(12, 1))
+        counts = getattr(pub_res.data, t_qc.cregs[0].name).get_counts()
+        hw_p0 = counts.get("0", 0) / shots
+        hw_p1 = counts.get("1", 0) / shots
+        hw_z = hw_p0 - hw_p1
 
         exec_time = time.time() - t0
         z_diff = abs(sim_z - hw_z)
-        status = "PASSED (Within Shot Tolerance)" if z_diff <= 0.08 else "COMPLETED"
+        status = "PASSED (Within Shot Tolerance)" if z_diff <= 0.08 else "COMPLETED (Outside Shot Tolerance)"
 
         return {
             "backend": self.backend.name,

@@ -18,6 +18,14 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter, ParameterVector
 from qiskit.quantum_info import Statevector, SparsePauliOp
 
+def feature_wire(feature_idx: int, num_qubits: int = 12) -> int:
+    """
+    Wire carrying PCA feature `feature_idx`. PCA columns arrive in descending explained-variance
+    order (feature 0 = strongest), so reversing puts the strongest 4 on pass-through wires 8-11
+    and the weakest 8 on wires 0-7, which the asymmetric pre-pool compresses first.
+    """
+    return num_qubits - 1 - feature_idx
+
 class QCNNCircuitBuilder:
     """
     Constructs the parameterized 12-qubit QCNN QuantumCircuit in Qiskit.
@@ -55,8 +63,8 @@ class QCNNCircuitBuilder:
         # Wires 0-7: Weakest 8 PCA components (paired for pre-pooling)
         # Wires 8-11: Strongest 4 PCA components (preserved through pre-pool)
         # -------------------------------------------------------------
-        for i in range(self.num_qubits):
-            qc.ry(x_params[i], i)
+        for j in range(self.num_qubits):
+            qc.ry(x_params[j], feature_wire(j, self.num_qubits))
         qc.barrier(label="Encoding_1")
 
         # -------------------------------------------------------------
@@ -72,8 +80,8 @@ class QCNNCircuitBuilder:
         # -------------------------------------------------------------
         # Layer 3: Data Re-Upload 1 (Ry(x_i) on all 12 wires)
         # -------------------------------------------------------------
-        for i in range(self.num_qubits):
-            qc.ry(x_params[i], i)
+        for j in range(self.num_qubits):
+            qc.ry(x_params[j], feature_wire(j, self.num_qubits))
         qc.barrier(label="ReUpload_1")
 
         # -------------------------------------------------------------
@@ -159,7 +167,13 @@ class QCNNModel:
         builder = QCNNCircuitBuilder(num_qubits=num_qubits, name=f"QCNN_{branch_name}")
         self.circuit, self.x_params, self.theta_params = builder.build_circuit()
         self.num_trainable_params = len(self.theta_params) # Exactly 36 parameters
-        
+
+        # Period of each trainable parameter: Ry(t + 2pi) = -Ry(t) is a global phase, but
+        # CRz(t + 2pi) = (Z on control) . CRz(t) is not, so CRz-gated parameters have period 4pi.
+        crz_params = {p for inst in self.circuit.data if inst.operation.name == "crz"
+                      for p in inst.operation.params[0].parameters}
+        self.param_periods = np.array([4.0 * np.pi if p in crz_params else 2.0 * np.pi for p in self.theta_params])
+
         # Trainable weights (initialized uniformly in [-pi/4, pi/4])
         np.random.seed(42)
         self.weights = np.random.uniform(-np.pi/4, np.pi/4, size=self.num_trainable_params)

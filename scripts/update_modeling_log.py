@@ -26,7 +26,48 @@ from swarmguard_modeling.control_models import run_control_matrix_benchmark
 from swarmguard_modeling.optimizers import run_optimizer_benchmarks
 from swarmguard_modeling.federated_trainer import run_federated_benchmark
 from swarmguard_modeling.alert_fusion import run_alert_fusion_benchmark
-from swarmguard_modeling.qpu_executor import QPUInferenceExecutor
+
+QPU_NOT_RUN_PREFIX = "NOT_RUN - "
+
+def _default_executor_factory():
+    # Imported lazily so a missing qiskit-ibm-runtime is logged as NOT_RUN instead of crashing the whole log run
+    from swarmguard_modeling.qpu_executor import QPUInferenceExecutor
+    return QPUInferenceExecutor()
+
+def build_qpu_table(executor_factory=_default_executor_factory, shots: int = 1024):
+    """
+    Runs the real IBM Quantum job and returns the 6_QPU_Submission row.
+    A PASSED/COMPLETED status is only produced from a completed hardware job; any failure
+    yields a NOT_RUN row carrying the real exception and blank job ID / depth / <Z> fields.
+    """
+    executor = None
+    try:
+        executor = executor_factory()
+        dummy_sample = np.ones(12) * 0.5
+        qpu_res = executor.evaluate_qpu_job(dummy_sample, shots=shots)
+        return [[
+            qpu_res["backend"],
+            qpu_res["job_id"],
+            f"{qpu_res['num_qubits']} Qubits",
+            f"Depth {qpu_res['depth']}",
+            f"{qpu_res['shots']:,}",
+            f"{qpu_res['sim_z']:.4f}",
+            f"{qpu_res['hw_z']:.4f}",
+            qpu_res["status"]
+        ]]
+    except Exception as e:
+        print(f"    [ERROR] IBM Quantum hardware job did not run: {e!r}")
+        backend = getattr(getattr(executor, "backend", None), "name", None)
+        return [[
+            backend,
+            None,
+            "12 Qubits",
+            None,
+            None,
+            None,
+            None,
+            f"{QPU_NOT_RUN_PREFIX}{type(e).__name__}: {e}"
+        ]]
 
 def run_all_modeling_steps_and_update_log():
     print("\n" + "="*80)
@@ -106,32 +147,7 @@ def run_all_modeling_steps_and_update_log():
     # Step 6: IBM Quantum QPU Submission
     # -------------------------------------------------------------
     print("\n[>>> STEP 6] IBM Quantum Hardware Submission...")
-    try:
-        executor = QPUInferenceExecutor()
-        dummy_sample = np.ones(12) * 0.5
-        qpu_res = executor.evaluate_qpu_job(dummy_sample, shots=1024)
-        qpu_table = [[
-            qpu_res["backend"],
-            qpu_res["job_id"],
-            f"{qpu_res['num_qubits']} Qubits",
-            f"Depth {qpu_res['depth']}",
-            f"{qpu_res['shots']:,}",
-            f"{qpu_res['sim_z']:.4f}",
-            f"{qpu_res['hw_z']:.4f}",
-            qpu_res["status"]
-        ]]
-    except Exception as e:
-        print(f"    [INFO] Live QPU connection note: {e}")
-        qpu_table = [[
-            "ibm_fez (156 Qubits)",
-            "ibm_sim_verified_job_01",
-            "12 Qubits",
-            "Depth 23",
-            "1,024",
-            "0.5934",
-            "0.5898",
-            "PASSED (Within Shot Tolerance)"
-        ]]
+    qpu_table = build_qpu_table()
     mgr.log_step_6(qpu_table)
 
     print("\n" + "="*80)

@@ -1,12 +1,14 @@
 """
 Phase 4: Federated Training with Circular-Mean Parameter Aggregation.
 Implements federated learning across 5 non-IID UAV swarm clients per branch
-using exact periodic gate parameter circular-mean aggregation:
-theta_bar_j = atan2( sum_k (n_k/N)*sin(theta_k,j), sum_k (n_k/N)*cos(theta_k,j) )
+using periodic gate parameter circular-mean aggregation with each parameter's own period P_j
+(2pi for Ry-gated, 4pi for CRz-gated parameters):
+theta_bar_j = (P_j/2pi) * atan2( sum_k (n_k/N)*sin(2pi*theta_k,j/P_j), sum_k (n_k/N)*cos(2pi*theta_k,j/P_j) )
 
 Compares federated convergence and accuracy against centralized QCNN baselines.
 """
 
+import json
 import time
 import numpy as np
 from pathlib import Path
@@ -63,34 +65,39 @@ class FederatedQCNNTrainer:
 
             ghat = (loss_plus - loss_minus) / (2.0 * c_k) * delta
             w -= a_k * np.clip(ghat, -1.5, 1.5)
-            w = (w + np.pi) % (2.0 * np.pi) - np.pi
+            # Wrap each parameter into [-P/2, P/2) using its own period P (2pi for Ry, 4pi for CRz)
+            periods = self.global_model.param_periods
+            w = (w + periods / 2.0) % periods - periods / 2.0
 
         return w, n_c
 
     def aggregate_circular_mean(self, client_weights: List[np.ndarray], client_sizes: List[int]) -> np.ndarray:
         """
-        Circular-Mean Periodic Parameter Aggregation:
-        theta_bar_j = atan2( sum_k (n_k/N)*sin(theta_k,j), sum_k (n_k/N)*cos(theta_k,j) )
+        Circular-Mean Periodic Parameter Aggregation, per-parameter period P_j (2pi for Ry, 4pi for CRz):
+        theta_bar_j = (P_j/2pi) * atan2( sum_k (n_k/N)*sin(2pi*theta_k,j/P_j), sum_k (n_k/N)*cos(2pi*theta_k,j/P_j) )
         """
         total_samples = sum(client_sizes)
         weights_array = np.array(client_weights)
         fractions = np.array(client_sizes, dtype=np.float64) / float(total_samples)
+        scale = 2.0 * np.pi / self.global_model.param_periods
 
-        sin_sum = np.sum(fractions[:, None] * np.sin(weights_array), axis=0)
-        cos_sum = np.sum(fractions[:, None] * np.cos(weights_array), axis=0)
+        sin_sum = np.sum(fractions[:, None] * np.sin(weights_array * scale), axis=0)
+        cos_sum = np.sum(fractions[:, None] * np.cos(weights_array * scale), axis=0)
 
-        theta_bar = np.arctan2(sin_sum, cos_sum)
+        theta_bar = np.arctan2(sin_sum, cos_sum) / scale
         return theta_bar
 
-    def train_federated(self, rounds: int = 5, local_steps: int = 3) -> Dict[str, Any]:
-        test_path = self.config.centralized_dir / f"{self.branch.lower()}_branch_train_test.npz"
-        t_data = np.load(test_path)
-        X_test, y_test = t_data["X_test"], t_data["y_test_binary"]
+    def evaluate(self, weights: np.ndarray, n_eval: int = 200) -> float:
+        """Accuracy (%) on the first n_eval rows of this branch's centralized test split."""
+        t_data = np.load(self.config.centralized_dir / f"{self.branch.lower()}_branch_train_test.npz")
+        X_test, y_test = t_data["X_test"][:n_eval], t_data["y_test_binary"][:n_eval]
+        preds = self.global_model.predict(X_test, weights=weights)
+        return accuracy_score(y_test, preds) * 100.0
 
+    def train_federated(self, rounds: int = 5, local_steps: int = 3) -> Dict[str, Any]:
         print(f"\n[*] Starting Federated Training for {self.branch} Branch ({self.num_clients} Clients, {rounds} Rounds)...", flush=True)
         w_global = self.global_weights.copy()
-        
-        n_eval = min(200, len(X_test))
+
         for r in range(1, rounds + 1):
             local_weights = []
             local_sizes = []
@@ -100,13 +107,11 @@ class FederatedQCNNTrainer:
                 local_sizes.append(n_c)
 
             w_global = self.aggregate_circular_mean(local_weights, local_sizes)
-            preds = self.global_model.predict(X_test[:n_eval], weights=w_global)
-            acc = accuracy_score(y_test[:n_eval], preds) * 100.0
+            acc = self.evaluate(w_global)
             print(f"    Round {r}/{rounds} Global Test Accuracy: {acc:.2f}%", flush=True)
 
         self.global_model.weights = w_global
-        final_preds = self.global_model.predict(X_test[:n_eval], weights=w_global)
-        final_acc = accuracy_score(y_test[:n_eval], final_preds) * 100.0
+        final_acc = self.evaluate(w_global)
 
         return {
             "branch": self.branch,
@@ -116,19 +121,31 @@ class FederatedQCNNTrainer:
             "weights": w_global
         }
 
-def run_federated_benchmark(centralized_acc_dict: Optional[Dict[str, float]] = None) -> List[List[Any]]:
+def load_centralized_qcnn_weights(config: PipelineConfig) -> Dict[str, np.ndarray]:
+    """Loads the trained centralized QCNN weights written by control_models.run_control_matrix_benchmark()."""
+    from .control_models import CENTRALIZED_RESULTS_FILE
+    path = config.reports_dir / CENTRALIZED_RESULTS_FILE
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found: run the Step 2 control matrix benchmark before the federated benchmark")
+    with open(path) as f:
+        record = json.load(f)
+    return {b: np.array(r["models"]["QCNN"]["trained_weights"]) for b, r in record["branches"].items()}
+
+def run_federated_benchmark() -> List[List[Any]]:
     print("\n" + "="*75, flush=True)
     print("      SWARMGUARD: FEDERATED QUANTUM LEARNING BENCHMARK", flush=True)
     print("="*75, flush=True)
 
     results = []
-    cent_dict = centralized_acc_dict or {"Network": 85.0, "Physical": 87.5}
-    
+    centralized_weights = load_centralized_qcnn_weights(PipelineConfig())
+
     for branch in ["Network", "Physical"]:
         trainer = FederatedQCNNTrainer(branch=branch, num_clients=5)
         res = trainer.train_federated(rounds=4, local_steps=3)
-        
-        c_acc = cent_dict.get(branch, 85.0)
+
+        # Centralized baseline: the trained centralized QCNN, scored on the same test rows as the federated model
+        c_acc = trainer.evaluate(centralized_weights[branch])
+        print(f"    Centralized QCNN (trained, loaded from run output) accuracy on same eval rows: {c_acc:.2f}%", flush=True)
         f_acc = res["final_accuracy"]
         gap = round(c_acc - f_acc, 2)
 
@@ -140,7 +157,7 @@ def run_federated_benchmark(centralized_acc_dict: Optional[Dict[str, float]] = N
             c_acc,
             f_acc,
             gap,
-            "theta_bar_j = atan2( sum_k (n_k/N)*sin(theta_k,j), sum_k (n_k/N)*cos(theta_k,j) )"
+            "theta_bar_j = (P_j/2pi)*atan2( sum_k (n_k/N)*sin(2pi*theta_k,j/P_j), sum_k (n_k/N)*cos(2pi*theta_k,j/P_j) ), P_j = 2pi (Ry) / 4pi (CRz)"
         ])
     print("\n[+] Completed Federated Training Benchmarks.", flush=True)
     return results

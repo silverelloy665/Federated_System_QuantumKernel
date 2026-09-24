@@ -23,6 +23,37 @@ from qiskit.quantum_info import Statevector, SparsePauliOp
 
 from .qcnn_ansatz import QCNNModel
 
+def binary_cross_entropy(probs: np.ndarray, y: np.ndarray) -> float:
+    return float(-np.mean(y * np.log(probs + 1e-8) + (1 - y) * np.log(1 - probs + 1e-8)))
+
+def spsa_fit(predict_proba, weights: np.ndarray, X_train: np.ndarray, y_train: np.ndarray,
+             iterations: int = 60, sample_size: int = 32, lr: float = 0.15, c0: float = 0.15,
+             clip: float = 1.0, log_every: int = 10, label: str = "") -> Tuple[np.ndarray, List[Tuple[int, float]]]:
+    """
+    Shared SPSA trainer for the quantum arms (identical budget for QCNN and HE-VQC).
+    Returns the trained weights and the full-train-set loss recorded every `log_every` iterations.
+    """
+    w = weights.copy()
+    history = [(0, binary_cross_entropy(predict_proba(X_train, w), y_train))]
+    print(f"      [{label}] iter {0:>3} train loss {history[-1][1]:.4f}", flush=True)
+    for it in range(iterations):
+        idx = np.random.choice(len(X_train), size=min(sample_size, len(X_train)), replace=False)
+        xb, yb = X_train[idx], y_train[idx]
+
+        delta = np.random.choice([-1.0, 1.0], size=len(w))
+        c_k = c0 / (it + 1) ** 0.101
+        a_k = lr / (it + 1) ** 0.602
+
+        loss_plus = binary_cross_entropy(predict_proba(xb, w + c_k * delta), yb)
+        loss_minus = binary_cross_entropy(predict_proba(xb, w - c_k * delta), yb)
+        ghat = (loss_plus - loss_minus) / (2.0 * c_k) * delta
+        w -= a_k * np.clip(ghat, -clip, clip)
+
+        if (it + 1) % log_every == 0 or it + 1 == iterations:
+            history.append((it + 1, binary_cross_entropy(predict_proba(X_train, w), y_train)))
+            print(f"      [{label}] iter {it + 1:>3} train loss {history[-1][1]:.4f}", flush=True)
+    return w, history
+
 # =========================================================================
 # Model (b): Capacity-Matched Classical MLP (36 Parameters)
 # Architecture: 12 -> 2 -> 2 -> 1
@@ -52,44 +83,51 @@ class CapacityMatchedMLP:
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray, epochs: int = 60, lr: float = 0.08, batch_size: int = 64):
         n_samples = len(X_train)
+        self.loss_history = [(0, binary_cross_entropy(self.forward(X_train), y_train))]
         for epoch in range(epochs):
-            indices = np.random.permutation(n_samples)
-            for start in range(0, n_samples, batch_size):
-                end = min(start + batch_size, n_samples)
-                batch_idx = indices[start:end]
-                xb, yb = X_train[batch_idx], y_train[batch_idx]
+            self._train_epoch(X_train, y_train, n_samples, lr, batch_size)
+            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(X_train), y_train)))
+            if (epoch + 1) % 10 == 0 or epoch == 0:
+                print(f"      [MLP] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
-                z1 = np.dot(xb, self.W1) + self.b1
-                h1 = np.maximum(0, z1)
-                z2 = np.dot(h1, self.W2) + self.b2
-                h2 = np.maximum(0, z2)
-                logits = (np.dot(h2, self.W3) + self.b3) * self.gain
-                probs = expit(logits.flatten())
+    def _train_epoch(self, X_train: np.ndarray, y_train: np.ndarray, n_samples: int, lr: float, batch_size: int):
+        indices = np.random.permutation(n_samples)
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
+            batch_idx = indices[start:end]
+            xb, yb = X_train[batch_idx], y_train[batch_idx]
 
-                dloss = (probs - yb)[:, None] / len(xb)
-                dlogits = dloss * self.gain
-                dgain = np.sum(dloss * (np.dot(h2, self.W3) + self.b3))
-                
-                dW3 = np.dot(h2.T, dlogits)
-                db3 = np.sum(dlogits, axis=0)
+            z1 = np.dot(xb, self.W1) + self.b1
+            h1 = np.maximum(0, z1)
+            z2 = np.dot(h1, self.W2) + self.b2
+            h2 = np.maximum(0, z2)
+            logits = (np.dot(h2, self.W3) + self.b3) * self.gain
+            probs = expit(logits.flatten())
 
-                dh2 = np.dot(dlogits, self.W3.T)
-                dz2 = dh2 * (z2 > 0)
-                dW2 = np.dot(h1.T, dz2)
-                db2 = np.sum(dz2, axis=0)
+            dloss = (probs - yb)[:, None] / len(xb)
+            dlogits = dloss * self.gain
+            dgain = np.sum(dloss * (np.dot(h2, self.W3) + self.b3))
 
-                dh1 = np.dot(dz2, self.W2.T)
-                dz1 = dh1 * (z1 > 0)
-                dW1 = np.dot(xb.T, dz1)
-                db1 = np.sum(dz1, axis=0)
+            dW3 = np.dot(h2.T, dlogits)
+            db3 = np.sum(dlogits, axis=0)
 
-                self.W1 -= lr * dW1
-                self.b1 -= lr * db1
-                self.W2 -= lr * dW2
-                self.b2 -= lr * db2
-                self.W3 -= lr * dW3
-                self.b3 -= lr * db3
-                self.gain -= lr * 0.01 * dgain
+            dh2 = np.dot(dlogits, self.W3.T)
+            dz2 = dh2 * (z2 > 0)
+            dW2 = np.dot(h1.T, dz2)
+            db2 = np.sum(dz2, axis=0)
+
+            dh1 = np.dot(dz2, self.W2.T)
+            dz1 = dh1 * (z1 > 0)
+            dW1 = np.dot(xb.T, dz1)
+            db1 = np.sum(dz1, axis=0)
+
+            self.W1 -= lr * dW1
+            self.b1 -= lr * db1
+            self.W2 -= lr * dW2
+            self.b2 -= lr * db2
+            self.W3 -= lr * dW3
+            self.b3 -= lr * db3
+            self.gain -= lr * 0.01 * dgain
 
 
 # =========================================================================
@@ -128,27 +166,33 @@ class CapacityMatchedMPS:
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray, epochs: int = 15, lr: float = 0.08, batch_size: int = 64):
         n_samples = len(X_train)
+        self.loss_history = [(0, binary_cross_entropy(self.forward(X_train), y_train))]
         for epoch in range(epochs):
-            indices = np.random.permutation(n_samples)
-            for start in range(0, n_samples, batch_size):
-                end = min(start + batch_size, n_samples)
-                batch_idx = indices[start:end]
-                xb, yb = X_train[batch_idx], y_train[batch_idx]
+            self._train_epoch(X_train, y_train, n_samples, lr, batch_size)
+            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(X_train), y_train)))
+            print(f"      [MPS] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
-                eps = 1e-4
-                preds = self.forward(xb)
-                base_loss = -np.mean(yb * np.log(preds + 1e-8) + (1 - yb) * np.log(1 - preds + 1e-8))
+    def _train_epoch(self, X_train: np.ndarray, y_train: np.ndarray, n_samples: int, lr: float, batch_size: int):
+        indices = np.random.permutation(n_samples)
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
+            batch_idx = indices[start:end]
+            xb, yb = X_train[batch_idx], y_train[batch_idx]
 
-                sample_p = np.random.choice(len(self.params), size=min(6, len(self.params)), replace=False)
-                grad = np.zeros_like(self.params)
-                for pi in sample_p:
-                    p_pert = self.params.copy()
-                    p_pert[pi] += eps
-                    p_preds = expit(np.array([self.contract_sample(x, p_pert) for x in xb]))
-                    pert_loss = -np.mean(yb * np.log(p_preds + 1e-8) + (1 - yb) * np.log(1 - p_preds + 1e-8))
-                    grad[pi] = (pert_loss - base_loss) / eps
+            eps = 1e-4
+            preds = self.forward(xb)
+            base_loss = -np.mean(yb * np.log(preds + 1e-8) + (1 - yb) * np.log(1 - preds + 1e-8))
 
-                self.params -= lr * grad
+            sample_p = np.random.choice(len(self.params), size=min(6, len(self.params)), replace=False)
+            grad = np.zeros_like(self.params)
+            for pi in sample_p:
+                p_pert = self.params.copy()
+                p_pert[pi] += eps
+                p_preds = expit(np.array([self.contract_sample(x, p_pert) for x in xb]))
+                pert_loss = -np.mean(yb * np.log(p_preds + 1e-8) + (1 - yb) * np.log(1 - p_preds + 1e-8))
+                grad[pi] = (pert_loss - base_loss) / eps
+
+            self.params -= lr * grad
 
 
 # =========================================================================
@@ -194,40 +238,33 @@ class HardwareEfficientVQC:
         exp_vals = np.array([self.compute_expectation(x, w) for x in X])
         return expit(2.0 * exp_vals)
 
-    def fit(self, X_train: np.ndarray, y_train: np.ndarray, iterations: int = 5, lr: float = 0.1, sample_size: int = 30):
-        for it in range(iterations):
-            idx = np.random.choice(len(X_train), size=sample_size, replace=False)
-            xb, yb = X_train[idx], y_train[idx]
-            
-            delta = np.random.choice([-1.0, 1.0], size=self.num_params)
-            c_k = 0.1 / (it + 1)**0.101
-            a_k = lr / (it + 1)**0.602
-
-            w_plus = self.weights + c_k * delta
-            w_minus = self.weights - c_k * delta
-
-            p_plus = self.predict_proba(xb, w_plus)
-            p_minus = self.predict_proba(xb, w_minus)
-
-            loss_plus = -np.mean(yb * np.log(p_plus + 1e-8) + (1 - yb) * np.log(1 - p_plus + 1e-8))
-            loss_minus = -np.mean(yb * np.log(p_minus + 1e-8) + (1 - yb) * np.log(1 - p_minus + 1e-8))
-
-            ghat = (loss_plus - loss_minus) / (2.0 * c_k) * delta
-            self.weights -= a_k * np.clip(ghat, -1.0, 1.0)
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, **spsa_kwargs):
+        self.weights, self.loss_history = spsa_fit(self.predict_proba, self.weights, X_train, y_train,
+                                                   label="HE-VQC", **spsa_kwargs)
 
 
 # =========================================================================
 # Control Matrix Benchmark Runner
 # =========================================================================
+QUANTUM_ARM_SPSA = dict(iterations=60, sample_size=32, lr=0.15, c0=0.15, clip=1.0, log_every=10)
+CENTRALIZED_RESULTS_FILE = "centralized_training_results.json"
+
+def _measured_notes(history: List[Tuple[int, float]], y_te_pred: np.ndarray, y_te: np.ndarray, unit: str) -> str:
+    """Notes column built only from what this run measured."""
+    return (f"Train loss {history[0][1]:.4f} -> {history[-1][1]:.4f} over {history[-1][0]} {unit}; "
+            f"predicts ATTACK for {y_te_pred.mean() * 100:.1f}% of test (true rate {y_te.mean() * 100:.1f}%)")
+
 def run_control_matrix_benchmark() -> List[List[Any]]:
     print("\n" + "="*75, flush=True)
     print("    SWARMGUARD: FOUR-ARM CAPACITY-MATCHED CONTROL MATRIX BENCHMARK", flush=True)
     print("="*75, flush=True)
 
+    import json
     from swarmguard_pipeline.config import PipelineConfig
     config = PipelineConfig()
 
     results_table = []
+    run_record: Dict[str, Any] = {"spsa_budget_quantum_arms": QUANTUM_ARM_SPSA, "branches": {}}
 
     for branch in ["Network", "Physical"]:
         npz_file = config.centralized_dir / f"{branch.lower()}_branch_train_test.npz"
@@ -247,15 +284,23 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         x_tr_eval, y_tr_eval = X_train[idx_tr], y_train[idx_tr]
         x_te_eval, y_te_eval = X_test[idx_te], y_test[idx_te]
 
-        # Arm (a): Proposed QCNN + Re-upload (36 Params)
+        branch_record: Dict[str, Any] = {
+            "train_eval_indices": idx_tr.tolist(),
+            "test_eval_indices": idx_te.tolist(),
+            "models": {}
+        }
+
+        # Arm (a): Proposed QCNN + Re-upload (36 Params) -- trained with the shared SPSA budget
         print("  -> Running Arm (a): Proposed 12-Qubit QCNN + Re-upload...", flush=True)
         t0 = time.time()
         qcnn = QCNNModel(branch, 12)
+        qcnn.weights, qcnn_history = spsa_fit(qcnn.predict_proba, qcnn.weights, x_tr_eval, y_tr_eval,
+                                              label="QCNN", **QUANTUM_ARM_SPSA)
+        t_qcnn = time.time() - t0
         qcnn_preds_tr = qcnn.predict_proba(x_tr_eval)
         qcnn_preds_te = qcnn.predict_proba(x_te_eval)
         qcnn_y_tr = (qcnn_preds_tr >= 0.5).astype(int)
         qcnn_y_te = (qcnn_preds_te >= 0.5).astype(int)
-        t_qcnn = time.time() - t0
 
         acc_tr_qcnn = accuracy_score(y_tr_eval, qcnn_y_tr) * 100.0
         acc_te_qcnn = accuracy_score(y_te_eval, qcnn_y_te) * 100.0
@@ -269,8 +314,12 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
             round(acc_te_qcnn, 2),
             round(f1_te_qcnn, 4),
             round(t_qcnn, 2),
-            "Hierarchical spatial locality (12->8->4->2->1); immune to barren plateaus; strong generalization"
+            _measured_notes(qcnn_history, qcnn_y_te, y_te_eval, "SPSA iterations")
         ])
+        branch_record["models"]["QCNN"] = {
+            "train_accuracy": acc_tr_qcnn, "test_accuracy": acc_te_qcnn, "test_macro_f1": f1_te_qcnn,
+            "loss_history": qcnn_history, "trained_weights": qcnn.weights.tolist()
+        }
 
         # Arm (b): Capacity-Matched MLP (36 Params)
         print("  -> Running Arm (b): Classical Capacity-Matched MLP (36 Params)...", flush=True)
@@ -296,8 +345,12 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
             round(acc_te_mlp, 2),
             round(f1_te_mlp, 4),
             round(t_mlp, 2),
-            "Classical feedforward (12->2->2->1); constrained by 36-parameter linear bottleneck"
+            _measured_notes(mlp.loss_history, mlp_y_te, y_te_eval, "epochs")
         ])
+        branch_record["models"]["MLP"] = {
+            "train_accuracy": acc_tr_mlp, "test_accuracy": acc_te_mlp, "test_macro_f1": f1_te_mlp,
+            "loss_history": mlp.loss_history
+        }
 
         # Arm (c): Capacity-Matched Matrix Product State (MPS) (36 Params)
         print("  -> Running Arm (c): Classical Tensor Network / MPS (36 Params)...", flush=True)
@@ -323,14 +376,18 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
             round(acc_te_mps, 2),
             round(f1_te_mps, 4),
             round(t_mps, 2),
-            "Classical tensor network; captures 1D entanglement but lacks quantum superposition advantage"
+            _measured_notes(mps.loss_history, mps_y_te, y_te_eval, "epochs")
         ])
+        branch_record["models"]["MPS"] = {
+            "train_accuracy": acc_tr_mps, "test_accuracy": acc_te_mps, "test_macro_f1": f1_te_mps,
+            "loss_history": mps.loss_history
+        }
 
         # Arm (d): Standard Hardware-Efficient VQC (36 Params)
         print("  -> Running Arm (d): Standard Hardware-Efficient VQC (Barren Plateau Control, 36 Params)...", flush=True)
         t0 = time.time()
         vqc = HardwareEfficientVQC(num_qubits=12)
-        vqc.fit(x_tr_eval, y_tr_eval, iterations=4, lr=0.08)
+        vqc.fit(x_tr_eval, y_tr_eval, **QUANTUM_ARM_SPSA)
         t_vqc = time.time() - t0
 
         vqc_preds_tr = vqc.predict_proba(x_tr_eval)
@@ -350,8 +407,20 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
             round(acc_te_vqc, 2),
             round(f1_te_vqc, 4),
             round(t_vqc, 2),
-            "Non-hierarchical entangling ring; suffers from exponential gradient variance decay (Barren Plateau)"
+            _measured_notes(vqc.loss_history, vqc_y_te, y_te_eval, "SPSA iterations")
         ])
+        branch_record["models"]["HE-VQC"] = {
+            "train_accuracy": acc_tr_vqc, "test_accuracy": acc_te_vqc, "test_macro_f1": f1_te_vqc,
+            "loss_history": vqc.loss_history
+        }
+        run_record["branches"][branch] = branch_record
+
+    # Persist the real run so downstream steps (federated baseline) load it instead of hardcoding numbers
+    config.reports_dir.mkdir(parents=True, exist_ok=True)
+    out_path = config.reports_dir / CENTRALIZED_RESULTS_FILE
+    with open(out_path, "w") as f:
+        json.dump(run_record, f, indent=2, default=float)
+    print(f"\n[+] Saved centralized training results to: {out_path}", flush=True)
 
     print("\n[+] Completed 8-Arm Centralized Control Matrix Benchmark.", flush=True)
     return results_table

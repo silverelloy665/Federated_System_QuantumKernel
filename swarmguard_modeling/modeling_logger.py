@@ -118,6 +118,18 @@ def autosize_columns(ws, min_width: int = 12, max_width: int = 65):
         ws.column_dimensions[col_letter].width = adjusted_width
 
 
+def summarize_control_matrix(results_table: List[List[Any]]) -> str:
+    """Builds the Step 2 summary from measured rows [model, branch, params, train_acc, test_acc, f1, time, notes]."""
+    parts = []
+    for branch in dict.fromkeys(r[1] for r in results_table):
+        rows = [r for r in results_table if r[1] == branch]
+        best_f1 = max(r[5] for r in rows)
+        leaders = [r[0] for r in rows if r[5] == best_f1]
+        qcnn_f1 = next(r[5] for r in rows if r[0].startswith("Proposed QCNN"))
+        qcnn_rank = 1 + sum(r[5] > qcnn_f1 for r in rows)  # ties share a rank
+        parts.append(f"{branch}: best test macro-F1 {best_f1:.4f} by {' / '.join(leaders)}; QCNN ranks {qcnn_rank} of {len(rows)}")
+    return "Trained 4 arms x 2 branches (36 params each). " + " | ".join(parts) + "."
+
 class ModelingLogManager:
     """Manages the lifecycle and real-time step logging in reports/SWARMGUARD_MODELING_LOG.xlsx."""
     
@@ -288,7 +300,7 @@ class ModelingLogManager:
 
         autosize_columns(ws)
         self.save()
-        self.append_master_log("2_Control_Matrix", "DONE", "swarmguard_modeling/control_models.py", f"Trained 8 centralized model arms (~36 parameters each). QCNN achieved superior generalization vs controls.")
+        self.append_master_log("2_Control_Matrix", "DONE", "swarmguard_modeling/control_models.py", summarize_control_matrix(results_table))
 
     def log_step_3(self, optimizer_results: List[List[Any]]):
         """Populates Sheet 3_Optimizers."""
@@ -310,7 +322,10 @@ class ModelingLogManager:
 
         autosize_columns(ws)
         self.save()
-        self.append_master_log("3_Optimizers", "DONE", "swarmguard_modeling/optimizers.py", "Benchmarked Rotosolve, SPSA, QNSPSA, ADAM. Rotosolve achieved rapid analytic convergence.")
+        best_acc = max(r[5] for r in optimizer_results)
+        leaders = " / ".join(r[0] for r in optimizer_results if r[5] == best_acc)
+        self.append_master_log("3_Optimizers", "DONE", "swarmguard_modeling/optimizers.py",
+                               f"Benchmarked {', '.join(r[0] for r in optimizer_results)}. Highest final accuracy {best_acc}% by {leaders} (Network branch, X_test[:150]).")
 
     def log_step_4(self, fed_results: List[List[Any]]):
         """Populates Sheet 4_Federated_Training."""
@@ -363,7 +378,11 @@ class ModelingLogManager:
 
         autosize_columns(ws)
         self.save()
-        self.append_master_log("5_Alert_Fusion", "DONE", "swarmguard_modeling/alert_fusion.py", "Implemented temporal alert fusion gate with Delta_t=3.0s; verified 4-outcome confusion matrix.")
+        total = sum(r[5] for r in cm_table)
+        correct = sum(r[1 + i] for i, r in enumerate(cm_table))
+        self.append_master_log("5_Alert_Fusion", "DONE", "swarmguard_modeling/alert_fusion.py",
+                               f"4-case fusion gate evaluated pointwise (Delta_t window not applied); {correct}/{total} paired test samples "
+                               f"({correct / total * 100:.2f}%) assigned the correct fused state.")
 
     def log_step_6(self, qpu_summary: List[List[Any]]):
         """Populates Sheet 6_QPU_Submission."""
@@ -385,5 +404,14 @@ class ModelingLogManager:
 
         autosize_columns(ws)
         self.save()
-        self.append_master_log("6_QPU_Submission", "DONE", "cross_check_ibm_quantum.py, swarmguard_modeling/qpu_executor.py", "Submitted QCNN inference job to IBM Quantum hardware; confirmed hardware-simulated agreement within shot tolerance.")
+
+        # Master log summary must reflect the real row, never a canned success message
+        backend, job_id, _, _, _, sim_z, hw_z, status = qpu_summary[0]
+        if str(status).startswith("NOT_RUN"):
+            master_status = "NOT_RUN"
+            summary = f"IBM Quantum hardware job did not run ({status[len('NOT_RUN - '):]})."
+        else:
+            master_status = "DONE"
+            summary = f"Real IBM job {job_id} on {backend}: simulated <Z>={sim_z}, hardware <Z>={hw_z} -> {status}."
+        self.append_master_log("6_QPU_Submission", master_status, "swarmguard_modeling/qpu_executor.py", summary)
 
