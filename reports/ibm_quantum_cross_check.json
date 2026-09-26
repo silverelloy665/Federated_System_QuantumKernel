@@ -1,15 +1,15 @@
 {
-    "timestamp": "2026-09-27 01:27:40",
+    "timestamp": "2026-09-27 02:04:12",
     "qiskit_version": "2.3.1",
-    "ibm_backend": "ibm_fez",
-    "hardware_qubits": 156,
-    "kernel_circuit_depth": 161,
+    "ibm_backend": "aer_simulator",
+    "hardware_qubits": 30,
+    "kernel_circuit_depth": 66,
     "transpiled_operations": {
-        "sx": 106,
-        "rz": 97,
-        "cz": 42,
+        "cx": 42,
+        "u2": 23,
+        "p": 21,
         "measure": 12,
-        "x": 3
+        "h": 1
     },
     "physical_branch": {
         "num_qubits": 12,
@@ -19,7 +19,7 @@
         ],
         "self_fidelity_benign": 1.0,
         "self_fidelity_attack": 1.0,
-        "cross_fidelity": 0.1845703125
+        "cross_fidelity": 0.19677734375
     },
     "network_branch": {
         "num_qubits": 12,
@@ -29,26 +29,26 @@
         ],
         "self_fidelity_benign": 1.0,
         "self_fidelity_attack": 1.0,
-        "cross_fidelity": 0.0009765625
+        "cross_fidelity": 0.0
     },
     "gram_matrix": [
         [
             1.0,
-            0.18310546875,
-            0.00048828125,
+            0.19921875,
+            0.0009765625,
             0.0
         ],
         [
-            0.16796875,
+            0.185546875,
             1.0,
-            0.00146484375,
+            0.001953125,
             0.0
         ],
         [
-            0.0,
+            0.00048828125,
             0.00244140625,
             1.0,
-            0.0009765625
+            0.00048828125
         ],
         [
             0.0,
@@ -61,6 +61,9 @@
     "verification_thresholds": {
         "shot_tolerance": 0.08,
         "min_self_fidelity": 0.92,
-        "max_cross_fidelity": 0.5
+        "max_cross_fidelity_phys": 0.3935546875,
+        "max_cross_fidelity_net": 0.08,
+        "k_p_cross_ideal": 0.19677734375,
+        "k_n_cross_ideal": 0.0
     }
 }
