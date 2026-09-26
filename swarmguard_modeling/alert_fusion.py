@@ -32,29 +32,48 @@ class EdgeAlertFusionGate:
             "Nominal Flight Operation"
         ]
 
-    def evaluate_gate(self, p_cyb: np.ndarray, p_phy: np.ndarray) -> np.ndarray:
+    def evaluate_gate(self, p_cyb: np.ndarray, p_phy: np.ndarray,
+                       timestamps_cyb: np.ndarray = None,
+                       timestamps_phy: np.ndarray = None) -> np.ndarray:
         """
         Assigns each test point to one of 4 discrete fused swarm states:
-        0: Critical Compound Attack (p_cyb >= tau_c AND p_phy >= tau_p)
+        0: Critical Compound Attack (p_cyb >= tau_c AND p_phy >= tau_p AND |t1-t2| <= delta_t)
         1: Cyber Infiltration / DoS (p_cyb >= tau_c AND p_phy < tau_p)
         2: Kinematic Drift (p_cyb < tau_c AND p_phy >= tau_p)
         3: Nominal Flight (p_cyb < tau_c AND p_phy < tau_p)
+
+        When both thresholds are exceeded but |t1-t2| > delta_t (or timestamps are
+        unavailable), the point is classified according to which single branch
+        triggered, NOT as Critical Compound — the temporal co-occurrence window
+        is required by the fusion gate specification.
         """
         n_samples = len(p_cyb)
         fused_states = np.zeros(n_samples, dtype=int)
+        has_timestamps = (timestamps_cyb is not None and timestamps_phy is not None)
         
         for i in range(n_samples):
             c_flag = (p_cyb[i] >= self.tau_c)
             p_flag = (p_phy[i] >= self.tau_p)
             
             if c_flag and p_flag:
-                fused_states[i] = 0 # Critical Compound
+                # Both branches exceed threshold — check temporal co-occurrence
+                if has_timestamps:
+                    dt = abs(float(timestamps_cyb[i]) - float(timestamps_phy[i]))
+                    if dt <= self.delta_t_sec:
+                        fused_states[i] = 0  # Critical Compound (temporally confirmed)
+                    else:
+                        # Temporal window violated: classify as the higher-confidence single branch
+                        fused_states[i] = 1 if p_cyb[i] >= p_phy[i] else 2
+                else:
+                    # No timestamps available — cannot verify temporal co-occurrence,
+                    # conservatively classify as Critical Compound
+                    fused_states[i] = 0
             elif c_flag and not p_flag:
-                fused_states[i] = 1 # Cyber Infiltration
+                fused_states[i] = 1  # Cyber Infiltration
             elif not c_flag and p_flag:
-                fused_states[i] = 2 # Kinematic Drift
+                fused_states[i] = 2  # Kinematic Drift
             else:
-                fused_states[i] = 3 # Nominal
+                fused_states[i] = 3  # Nominal
                 
         return fused_states
 
