@@ -51,12 +51,32 @@ class QPUInferenceExecutor:
         t_qc = transpile(meas_qc, backend=self.backend, optimization_level=2)
         return t_qc
 
-    def evaluate_qpu_job(self, sample_x: np.ndarray, shots: int = 1024) -> Dict[str, Any]:
+    def evaluate_qpu_job(self, sample_x: np.ndarray, shots: int = 1024, weights: Optional[np.ndarray] = None) -> Dict[str, Any]:
         """
         Runs hardware evaluation and compares against ideal simulator.
         """
         print(f"\n[*] Transpiling 12-Qubit QCNN for IBM Quantum QPU: {self.backend.name} ({self.backend.num_qubits} Qubits)...")
         qcnn = QCNNModel("Network", 12)
+        if weights is not None:
+            qcnn.weights = np.array(weights)
+        else:
+            config = PipelineConfig()
+            res_file = config.reports_dir / "centralized_training_results.json"
+            if not res_file.exists():
+                alt_res = Path(__file__).resolve().parent.parent / "reports" / "centralized_training_results.json"
+                if alt_res.exists():
+                    res_file = alt_res
+            if res_file.exists():
+                try:
+                    import json
+                    with open(res_file) as f:
+                        data = json.load(f)
+                    tw = data.get("branches", {}).get("Network", {}).get("models", {}).get("QCNN", {}).get("trained_weights")
+                    if tw:
+                        qcnn.weights = np.array(tw)
+                        print("    [+] Loaded trained centralized QCNN weights.")
+                except Exception as e:
+                    print(f"    Notice: Using default weights ({e})")
         
         t_qc = self.transpile_qcnn_for_hardware(qcnn, sample_x)
         depth = t_qc.depth()
