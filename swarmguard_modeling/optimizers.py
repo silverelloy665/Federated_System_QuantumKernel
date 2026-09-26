@@ -20,34 +20,6 @@ from sklearn.metrics import accuracy_score
 
 from .qcnn_ansatz import QCNNModel
 
-
-def _stratified_eval_slice(X: np.ndarray, y: np.ndarray, max_samples: int = 150) -> tuple:
-    """Returns a stratified subset of (X, y) that preserves all classes present in y.
-
-    Guarantees every class has at least 1 sample, then fills remaining budget
-    proportionally.  Falls back to the full array when max_samples >= len(y).
-    """
-    if max_samples >= len(y):
-        return X, y
-    classes, counts = np.unique(y, return_counts=True)
-    n_classes = len(classes)
-    # At least 1 sample per class, rest distributed proportionally
-    per_class_min = max(1, max_samples // (n_classes * 2))
-    budget_remaining = max_samples
-    indices = []
-    for cls, cnt in zip(classes, counts):
-        cls_idx = np.where(y == cls)[0]
-        n_take = min(cnt, max(per_class_min, int(max_samples * cnt / len(y))))
-        n_take = min(n_take, budget_remaining)
-        chosen = np.random.choice(cls_idx, size=n_take, replace=False)
-        indices.extend(chosen)
-        budget_remaining -= n_take
-        if budget_remaining <= 0:
-            break
-    indices = np.array(indices)
-    np.random.shuffle(indices)
-    return X[indices], y[indices]
-
 class QuantumOptimizerBenchmark:
     def __init__(self, branch: str = "Network"):
         self.branch = branch
@@ -86,9 +58,8 @@ class QuantumOptimizerBenchmark:
                 w[i] = theta_opt
 
         wall_time = time.time() - t0
-        X_eval, y_eval = _stratified_eval_slice(X_test, y_test, max_samples=150)
-        test_preds = self.qcnn.predict(X_eval, weights=w)
-        acc = accuracy_score(y_eval, test_preds) * 100.0
+        test_preds = self.qcnn.predict(X_test[:150], weights=w)
+        acc = accuracy_score(y_test[:150], test_preds) * 100.0
 
         return {
             "name": "Rotosolve",
@@ -126,9 +97,8 @@ class QuantumOptimizerBenchmark:
             w -= a_k * np.clip(ghat, -2.0, 2.0)
 
         wall_time = time.time() - t0
-        X_eval, y_eval = _stratified_eval_slice(X_test, y_test, max_samples=150)
-        test_preds = self.qcnn.predict(X_eval, weights=w)
-        acc = accuracy_score(y_eval, test_preds) * 100.0
+        test_preds = self.qcnn.predict(X_test[:150], weights=w)
+        acc = accuracy_score(y_test[:150], test_preds) * 100.0
 
         return {
             "name": "SPSA",
@@ -168,9 +138,8 @@ class QuantumOptimizerBenchmark:
             w -= a_k * np.clip(nat_grad, -2.0, 2.0)
 
         wall_time = time.time() - t0
-        X_eval, y_eval = _stratified_eval_slice(X_test, y_test, max_samples=150)
-        test_preds = self.qcnn.predict(X_eval, weights=w)
-        acc = accuracy_score(y_eval, test_preds) * 100.0
+        test_preds = self.qcnn.predict(X_test[:150], weights=w)
+        acc = accuracy_score(y_test[:150], test_preds) * 100.0
 
         return {
             "name": "QNSPSA",
@@ -213,9 +182,8 @@ class QuantumOptimizerBenchmark:
             w -= lr * m_hat / (np.sqrt(v_hat) + eps)
 
         wall_time = time.time() - t0
-        X_eval, y_eval = _stratified_eval_slice(X_test, y_test, max_samples=150)
-        test_preds = self.qcnn.predict(X_eval, weights=w)
-        acc = accuracy_score(y_eval, test_preds) * 100.0
+        test_preds = self.qcnn.predict(X_test[:150], weights=w)
+        acc = accuracy_score(y_test[:150], test_preds) * 100.0
 
         return {
             "name": "ADAM (Param-Shift)",
