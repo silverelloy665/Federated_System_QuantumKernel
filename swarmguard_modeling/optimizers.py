@@ -17,6 +17,7 @@ import time
 import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
 from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
 
 from .qcnn_ansatz import QCNNModel
 
@@ -25,6 +26,16 @@ class QuantumOptimizerBenchmark:
         self.branch = branch
         self.qcnn = QCNNModel(branch, 12)
         self.num_params = self.qcnn.num_trainable_params # 36
+
+    @staticmethod
+    def get_stratified_eval_sample(X_test: np.ndarray, y_test: np.ndarray, n_samples: int = 200, random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
+        """Draws a reproducible stratified evaluation sample if X_test exceeds n_samples."""
+        if len(X_test) <= n_samples:
+            return X_test, y_test
+        X_eval, _, y_eval, _ = train_test_split(
+            X_test, y_test, train_size=n_samples, stratify=y_test, random_state=random_state
+        )
+        return X_eval, y_eval
 
     def compute_loss(self, weights: np.ndarray, X: np.ndarray, y: np.ndarray) -> float:
         probs = self.qcnn.predict_proba(X, weights)
@@ -58,8 +69,9 @@ class QuantumOptimizerBenchmark:
                 w[i] = theta_opt
 
         wall_time = time.time() - t0
-        test_preds = self.qcnn.predict(X_test[:150], weights=w)
-        acc = accuracy_score(y_test[:150], test_preds) * 100.0
+        X_eval, y_eval = self.get_stratified_eval_sample(X_test, y_test, n_samples=200, random_state=42)
+        test_preds = self.qcnn.predict(X_eval, weights=w)
+        acc = accuracy_score(y_eval, test_preds) * 100.0
 
         return {
             "name": "Rotosolve",
@@ -97,8 +109,9 @@ class QuantumOptimizerBenchmark:
             w -= a_k * np.clip(ghat, -2.0, 2.0)
 
         wall_time = time.time() - t0
-        test_preds = self.qcnn.predict(X_test[:150], weights=w)
-        acc = accuracy_score(y_test[:150], test_preds) * 100.0
+        X_eval, y_eval = self.get_stratified_eval_sample(X_test, y_test, n_samples=200, random_state=42)
+        test_preds = self.qcnn.predict(X_eval, weights=w)
+        acc = accuracy_score(y_eval, test_preds) * 100.0
 
         return {
             "name": "SPSA",
@@ -138,8 +151,9 @@ class QuantumOptimizerBenchmark:
             w -= a_k * np.clip(nat_grad, -2.0, 2.0)
 
         wall_time = time.time() - t0
-        test_preds = self.qcnn.predict(X_test[:150], weights=w)
-        acc = accuracy_score(y_test[:150], test_preds) * 100.0
+        X_eval, y_eval = self.get_stratified_eval_sample(X_test, y_test, n_samples=200, random_state=42)
+        test_preds = self.qcnn.predict(X_eval, weights=w)
+        acc = accuracy_score(y_eval, test_preds) * 100.0
 
         return {
             "name": "QNSPSA",
@@ -182,8 +196,9 @@ class QuantumOptimizerBenchmark:
             w -= lr * m_hat / (np.sqrt(v_hat) + eps)
 
         wall_time = time.time() - t0
-        test_preds = self.qcnn.predict(X_test[:150], weights=w)
-        acc = accuracy_score(y_test[:150], test_preds) * 100.0
+        X_eval, y_eval = self.get_stratified_eval_sample(X_test, y_test, n_samples=200, random_state=42)
+        test_preds = self.qcnn.predict(X_eval, weights=w)
+        acc = accuracy_score(y_eval, test_preds) * 100.0
 
         return {
             "name": "ADAM (Param-Shift)",
@@ -205,14 +220,28 @@ def run_optimizer_benchmarks() -> List[List[Any]]:
     config = PipelineConfig()
     data = np.load(config.centralized_dir / "network_branch_train_test.npz")
     X_tr, y_tr = data["X_train"], data["y_train_binary"]
-    X_te, y_te = data["X_test"], data["y_test_binary"]
+    X_te, y_te_bin = data["X_test"], data["y_test_binary"]
+    y_te_multi = data["y_test"] if "y_test" in data else y_te_bin
+
+    # Shared stratified sample of 200 samples reused across all 4 optimizers
+    # Stratified against multiclass labels ensuring class 4 (Spoofing_MITM) is represented
+    stratify_labels = y_te_multi if len(np.unique(y_te_multi)) > 2 else y_te_bin
+    X_eval, _, y_eval, _, y_eval_multi, _ = train_test_split(
+        X_te, y_te_bin, y_te_multi, train_size=min(200, len(X_te)),
+        stratify=stratify_labels, random_state=42
+    )
+
+    classes_present, counts = np.unique(y_eval_multi, return_counts=True)
+    print(f"[*] Shared Stratified Evaluation Set (N={len(y_eval)}) Multi-Class Distribution:", flush=True)
+    for c, cnt in zip(classes_present, counts):
+        print(f"    - Class {c}: {cnt} sample(s)", flush=True)
 
     bench = QuantumOptimizerBenchmark(branch="Network")
     
-    res_rotosolve = bench.run_rotosolve(X_tr, y_tr, X_te, y_te, max_cycles=3)
-    res_spsa = bench.run_spsa(X_tr, y_tr, X_te, y_te, max_steps=20)
-    res_qnspsa = bench.run_qnspsa(X_tr, y_tr, X_te, y_te, max_steps=15)
-    res_adam = bench.run_adam(X_tr, y_tr, X_te, y_te, max_steps=5)
+    res_rotosolve = bench.run_rotosolve(X_tr, y_tr, X_eval, y_eval, max_cycles=3)
+    res_spsa = bench.run_spsa(X_tr, y_tr, X_eval, y_eval, max_steps=20)
+    res_qnspsa = bench.run_qnspsa(X_tr, y_tr, X_eval, y_eval, max_steps=15)
+    res_adam = bench.run_adam(X_tr, y_tr, X_eval, y_eval, max_steps=5)
 
     rows = []
     for r in [res_rotosolve, res_spsa, res_qnspsa, res_adam]:

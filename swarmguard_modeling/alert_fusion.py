@@ -32,26 +32,33 @@ class EdgeAlertFusionGate:
             "Nominal Flight Operation"
         ]
 
-    def evaluate_gate(self, p_cyb: np.ndarray, p_phy: np.ndarray) -> np.ndarray:
+    def evaluate_gate(self, p_cyb: np.ndarray, p_phy: np.ndarray,
+                      t_cyb: Optional[np.ndarray] = None,
+                      t_phy: Optional[np.ndarray] = None) -> np.ndarray:
         """
         Assigns each test point to one of 4 discrete fused swarm states:
-        0: Critical Compound Attack (p_cyb >= tau_c AND p_phy >= tau_p)
-        1: Cyber Infiltration / DoS (p_cyb >= tau_c AND p_phy < tau_p)
+        0: Critical Compound Attack (p_cyb >= tau_c AND p_phy >= tau_p AND |t_cyb - t_phy| <= delta_t_sec)
+        1: Cyber Infiltration / DoS (p_cyb >= tau_c AND (p_phy < tau_p OR |t_cyb - t_phy| > delta_t_sec))
         2: Kinematic Drift (p_cyb < tau_c AND p_phy >= tau_p)
         3: Nominal Flight (p_cyb < tau_c AND p_phy < tau_p)
         """
         n_samples = len(p_cyb)
         fused_states = np.zeros(n_samples, dtype=int)
         
+        t_c = np.zeros(n_samples) if t_cyb is None else np.asarray(t_cyb, dtype=float)
+        t_p = np.zeros(n_samples) if t_phy is None else np.asarray(t_phy, dtype=float)
+        
         for i in range(n_samples):
             c_flag = (p_cyb[i] >= self.tau_c)
             p_flag = (p_phy[i] >= self.tau_p)
+            dt = abs(t_c[i] - t_p[i])
+            temporal_sync = (dt <= self.delta_t_sec)
             
-            if c_flag and p_flag:
-                fused_states[i] = 0 # Critical Compound
-            elif c_flag and not p_flag:
-                fused_states[i] = 1 # Cyber Infiltration
-            elif not c_flag and p_flag:
+            if c_flag and p_flag and temporal_sync:
+                fused_states[i] = 0 # Critical Compound Attack (temporally confirmed)
+            elif c_flag:
+                fused_states[i] = 1 # Cyber Infiltration / DoS (or temporal window exceeded)
+            elif p_flag:
                 fused_states[i] = 2 # Kinematic Drift
             else:
                 fused_states[i] = 3 # Nominal

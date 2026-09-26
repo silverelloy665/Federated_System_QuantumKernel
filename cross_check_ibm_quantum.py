@@ -29,7 +29,7 @@ if str(repo_root) not in sys.path:
 from swarmguard_pipeline.config import PipelineConfig
 
 def create_quantum_kernel_circuit(x1: np.ndarray, x2: np.ndarray, num_qubits: int = 12) -> QuantumCircuit:
-    """
+    r"""
     Constructs the 12-qubit transition circuit U(x1) @ U^\dagger(x2).
     The probability of measuring |00...0> corresponds to transition fidelity |<psi(x2)|psi(x1)>|^2.
     """
@@ -96,18 +96,18 @@ def run_ibm_quantum_cross_check():
     channel = os.getenv("QISKIT_IBM_CHANNEL", "ibm_quantum_platform")
     
     print(f"\n[2] Connecting to IBM Quantum Platform...")
-    service = QiskitRuntimeService(channel=channel, token=token)
-    
-    # Query active hardware backends
-    backends = service.backends(operational=True, simulator=False)
-    print(f"    Available QPUs ({len(backends)}):")
-    for b in backends:
-        st = b.status()
-        print(f"      - {b.name}: {b.num_qubits} physical qubits | Pending Jobs: {st.pending_jobs}")
-
-    # Select least busy QPU
-    hw_backend = service.least_busy(operational=True, simulator=False)
-    print(f"\n[+] Selected IBM Quantum Processor: {hw_backend.name} ({hw_backend.num_qubits} Qubits)")
+    try:
+        service = QiskitRuntimeService(channel=channel, token=token)
+        backends = service.backends(operational=True, simulator=False)
+        print(f"    Available QPUs ({len(backends)}):")
+        for b in backends:
+            st = b.status()
+            print(f"      - {b.name}: {b.num_qubits} physical qubits | Pending Jobs: {st.pending_jobs}")
+        hw_backend = service.least_busy(operational=True, simulator=False)
+        print(f"\n[+] Selected IBM Quantum Processor: {hw_backend.name} ({hw_backend.num_qubits} Qubits)")
+    except Exception as e:
+        print(f"\n[!] Notice: Could not query IBM Quantum hardware ({e}). Using AerSimulator for local transpilation and validation.")
+        hw_backend = AerSimulator()
 
     # 3. Transpile 12-Qubit Quantum Kernel Circuit for IBM Hardware
     print(f"\n[3] Hardware Transpilation & Gate Synthesis on {hw_backend.name}...")
@@ -176,12 +176,31 @@ def run_ibm_quantum_cross_check():
         row_str = " ".join([f"{val:>12.4f}" for val in row])
         print(f"    {sample_labels[i]:<14} {row_str}")
 
-    # 6. Save Cross-Check Artifacts
+    # 6. Evaluate Verification Status against Shot-Tolerance Thresholds
+    # In swarmguard_modeling/qpu_executor.py (line 113), the shot tolerance is 0.08.
+    # For ideal kernel fidelity K(x, x), expected self-fidelity is 1.0.
+    # Allowing for shot noise within tolerance, minimum self-fidelity = 1.0 - 0.08 = 0.92.
+    # Cross-fidelity K(x_benign, x_attack) must demonstrate clear separation from self-fidelity.
+    SHOT_TOLERANCE = 0.08  # Derived from swarmguard_modeling/qpu_executor.py
+    MIN_SELF_FIDELITY = 1.0 - SHOT_TOLERANCE  # 0.92 minimum self-fidelity
+    MAX_CROSS_FIDELITY = 0.50  # Distinct class separation threshold
+
+    if (k_n_self_benign < MIN_SELF_FIDELITY or k_n_self_attack < MIN_SELF_FIDELITY or
+        k_p_self_benign < MIN_SELF_FIDELITY or k_p_self_attack < MIN_SELF_FIDELITY):
+        verification_status = f"FAILED - LOW_SELF_FIDELITY (min_threshold={MIN_SELF_FIDELITY:.2f})"
+    elif k_n_cross > MAX_CROSS_FIDELITY or k_p_cross > MAX_CROSS_FIDELITY:
+        verification_status = f"FAILED - HIGH_CROSS_FIDELITY (max_threshold={MAX_CROSS_FIDELITY:.2f})"
+    else:
+        verification_status = "PASSED"
+
+    print(f"\n[6] Verification Status: {verification_status}")
+
+    # 7. Save Cross-Check Artifacts
     cross_check_report = {
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "qiskit_version": qiskit.__version__,
         "ibm_backend": hw_backend.name,
-        "hardware_qubits": hw_backend.num_qubits,
+        "hardware_qubits": getattr(hw_backend, "num_qubits", 12),
         "kernel_circuit_depth": t_qc_cross.depth(),
         "transpiled_operations": dict(t_qc_cross.count_ops()),
         "physical_branch": {
@@ -199,16 +218,28 @@ def run_ibm_quantum_cross_check():
             "cross_fidelity": k_n_cross
         },
         "gram_matrix": gram_matrix.tolist(),
-        "verification_status": "PASSED"
+        "verification_status": verification_status,
+        "verification_thresholds": {
+            "shot_tolerance": SHOT_TOLERANCE,
+            "min_self_fidelity": MIN_SELF_FIDELITY,
+            "max_cross_fidelity": MAX_CROSS_FIDELITY
+        }
     }
 
     report_path = config.reports_dir / "ibm_quantum_cross_check.json"
     with open(report_path, "w") as f:
         json.dump(cross_check_report, f, indent=4)
 
+    # Mirror to reports/ at repo root if different
+    alt_report_path = repo_root / "reports" / "ibm_quantum_cross_check.json"
+    if alt_report_path.resolve() != report_path.resolve():
+        alt_report_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(alt_report_path, "w") as f:
+            json.dump(cross_check_report, f, indent=4)
+
     print(f"\n[+] Saved IBM Quantum cross-check report to: {report_path}")
     print("\n" + "="*75)
-    print(">> IBM QUANTUM HARDWARE CROSS-CHECK: ALL 12-QUBIT TESTS PASSED [SUCCESS]")
+    print(f">> IBM QUANTUM HARDWARE CROSS-CHECK: {verification_status}")
     print("="*75 + "\n")
     return cross_check_report
 

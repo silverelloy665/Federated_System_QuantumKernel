@@ -29,7 +29,9 @@ class CleaningHarmonizer:
         Unmapped labels fallback to ("UNKNOWN", -1, 1) and are audited.
         """
         if pd.isna(raw_label):
-            res = ("BENIGN", 0, 0)
+            res = (UNKNOWN_CLASS_LABEL, UNKNOWN_CLASS_ID, 1)
+            self.unmapped_labels_per_source[source_dataset][str(raw_label)] += 1
+            self.unknown_counts_per_source[source_dataset] += 1
             self.label_mapping_counts[(str(raw_label), res[0], res[1], res[2], source_dataset)] += 1
             return res
         
@@ -37,7 +39,7 @@ class CleaningHarmonizer:
         lbl = lbl_str.lower()
         
         # 0: BENIGN
-        if any(x in lbl for x in ['benign', 'normal', 'none', 'clear', 'regular']):
+        if any(x in lbl for x in ['benign', 'normal', 'clear', 'regular']):
             res = ("BENIGN", 0, 0)
         # 5: FDI (False Data Injection)
         elif 'fdi' in lbl or 'false data' in lbl or ('injection' in lbl and 'command' not in lbl and 'sql' not in lbl):
