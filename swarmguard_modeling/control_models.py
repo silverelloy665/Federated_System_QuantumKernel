@@ -21,17 +21,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import ParameterVector
 from qiskit.quantum_info import Statevector, SparsePauliOp
 
-from sklearn.model_selection import train_test_split
 from .qcnn_ansatz import QCNNModel
-
-def get_stratified_eval_sample(X: np.ndarray, y: np.ndarray, n_samples: int = 3000, random_state: int = 42) -> Tuple[np.ndarray, np.ndarray]:
-    """Draws a reproducible stratified evaluation sample if X exceeds n_samples."""
-    if len(X) <= n_samples:
-        return X, y
-    X_eval, _, y_eval, _ = train_test_split(
-        X, y, train_size=n_samples, stratify=y, random_state=random_state
-    )
-    return X_eval, y_eval
 
 def binary_cross_entropy(probs: np.ndarray, y: np.ndarray) -> float:
     return float(-np.mean(y * np.log(probs + 1e-8) + (1 - y) * np.log(1 - probs + 1e-8)))
@@ -44,11 +34,7 @@ def spsa_fit(predict_proba, weights: np.ndarray, X_train: np.ndarray, y_train: n
     Returns the trained weights and the full-train-set loss recorded every `log_every` iterations.
     """
     w = weights.copy()
-    
-    # Pre-compute fixed stratified subsample for logging to avoid hour-long evaluation bottlenecks
-    X_log, y_log = get_stratified_eval_sample(X_train, y_train, n_samples=3000)
-    
-    history = [(0, binary_cross_entropy(predict_proba(X_log, w), y_log))]
+    history = [(0, binary_cross_entropy(predict_proba(X_train, w), y_train))]
     print(f"      [{label}] iter {0:>3} train loss {history[-1][1]:.4f}", flush=True)
     pos_idx = np.where(y_train == 1)[0]
     neg_idx = np.where(y_train == 0)[0]
@@ -74,7 +60,7 @@ def spsa_fit(predict_proba, weights: np.ndarray, X_train: np.ndarray, y_train: n
         w -= a_k * np.clip(ghat, -clip, clip)
 
         if (it + 1) % log_every == 0 or it + 1 == iterations:
-            history.append((it + 1, binary_cross_entropy(predict_proba(X_log, w), y_log)))
+            history.append((it + 1, binary_cross_entropy(predict_proba(X_train, w), y_train)))
             print(f"      [{label}] iter {it + 1:>3} train loss {history[-1][1]:.4f}", flush=True)
     return w, history
 
