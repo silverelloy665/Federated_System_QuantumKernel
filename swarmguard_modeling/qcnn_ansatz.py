@@ -176,7 +176,7 @@ class QCNNModel:
 
         # Trainable weights (initialized uniformly in [-pi/4, pi/4])
         np.random.seed(42)
-        self.weights = np.random.uniform(-np.pi/4, np.pi/4, size=self.num_trainable_params)
+        self.weights = np.random.uniform(-0.01, 0.01, size=self.num_trainable_params)
         
         # Scaling & bias parameters
         self.scale = 2.0

@@ -36,8 +36,18 @@ def spsa_fit(predict_proba, weights: np.ndarray, X_train: np.ndarray, y_train: n
     w = weights.copy()
     history = [(0, binary_cross_entropy(predict_proba(X_train, w), y_train))]
     print(f"      [{label}] iter {0:>3} train loss {history[-1][1]:.4f}", flush=True)
+    pos_idx = np.where(y_train == 1)[0]
+    neg_idx = np.where(y_train == 0)[0]
+    has_both = len(pos_idx) > 0 and len(neg_idx) > 0
     for it in range(iterations):
-        idx = np.random.choice(len(X_train), size=min(sample_size, len(X_train)), replace=False)
+        if has_both:
+            half = min(sample_size // 2, len(pos_idx), len(neg_idx))
+            idx_p = np.random.choice(pos_idx, size=half, replace=False)
+            idx_n = np.random.choice(neg_idx, size=half, replace=False)
+            idx = np.concatenate([idx_p, idx_n])
+            np.random.shuffle(idx)
+        else:
+            idx = np.random.choice(len(X_train), size=min(sample_size, len(X_train)), replace=False)
         xb, yb = X_train[idx], y_train[idx]
 
         delta = np.random.choice([-1.0, 1.0], size=len(w))
@@ -91,10 +101,23 @@ class CapacityMatchedMLP:
                 print(f"      [MLP] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
     def _train_epoch(self, X_train: np.ndarray, y_train: np.ndarray, n_samples: int, lr: float, batch_size: int):
-        indices = np.random.permutation(n_samples)
-        for start in range(0, n_samples, batch_size):
-            end = min(start + batch_size, n_samples)
-            batch_idx = indices[start:end]
+        pos_idx = np.where(y_train == 1)[0]
+        neg_idx = np.where(y_train == 0)[0]
+        if len(pos_idx) == 0 or len(neg_idx) == 0:
+            indices = np.random.permutation(n_samples)
+            batches = [indices[start:min(start+batch_size, n_samples)] for start in range(0, n_samples, batch_size)]
+        else:
+            min_len = min(len(pos_idx), len(neg_idx))
+            pos_shuf = np.random.permutation(pos_idx)[:min_len]
+            neg_shuf = np.random.permutation(neg_idx)[:min_len]
+            batches = []
+            half = batch_size // 2
+            for start in range(0, min_len, half):
+                end = min(start + half, min_len)
+                b = np.concatenate([pos_shuf[start:end], neg_shuf[start:end]])
+                np.random.shuffle(b)
+                if len(b) > 0: batches.append(b)
+        for batch_idx in batches:
             xb, yb = X_train[batch_idx], y_train[batch_idx]
 
             z1 = np.dot(xb, self.W1) + self.b1
@@ -137,7 +160,7 @@ class CapacityMatchedMPS:
     def __init__(self, num_sites: int = 12):
         self.num_sites = num_sites
         np.random.seed(42)
-        self.params = np.random.randn(36) * 0.15
+        self.params = np.random.randn(36) * 0.01
         self.num_params = 36
 
     def contract_sample(self, x: np.ndarray, p: np.ndarray) -> float:
@@ -173,10 +196,23 @@ class CapacityMatchedMPS:
             print(f"      [MPS] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
     def _train_epoch(self, X_train: np.ndarray, y_train: np.ndarray, n_samples: int, lr: float, batch_size: int):
-        indices = np.random.permutation(n_samples)
-        for start in range(0, n_samples, batch_size):
-            end = min(start + batch_size, n_samples)
-            batch_idx = indices[start:end]
+        pos_idx = np.where(y_train == 1)[0]
+        neg_idx = np.where(y_train == 0)[0]
+        if len(pos_idx) == 0 or len(neg_idx) == 0:
+            indices = np.random.permutation(n_samples)
+            batches = [indices[start:min(start+batch_size, n_samples)] for start in range(0, n_samples, batch_size)]
+        else:
+            min_len = min(len(pos_idx), len(neg_idx))
+            pos_shuf = np.random.permutation(pos_idx)[:min_len]
+            neg_shuf = np.random.permutation(neg_idx)[:min_len]
+            batches = []
+            half = batch_size // 2
+            for start in range(0, min_len, half):
+                end = min(start + half, min_len)
+                b = np.concatenate([pos_shuf[start:end], neg_shuf[start:end]])
+                np.random.shuffle(b)
+                if len(b) > 0: batches.append(b)
+        for batch_idx in batches:
             xb, yb = X_train[batch_idx], y_train[batch_idx]
 
             eps = 1e-4
@@ -203,7 +239,7 @@ class HardwareEfficientVQC:
         self.num_qubits = num_qubits
         self.num_params = 36
         np.random.seed(42)
-        self.weights = np.random.uniform(-np.pi/4, np.pi/4, size=36)
+        self.weights = np.random.uniform(-0.01, 0.01, size=36)
         
         self.x_params = ParameterVector('x', 12)
         self.theta_params = ParameterVector('theta', 36)
@@ -246,7 +282,7 @@ class HardwareEfficientVQC:
 # =========================================================================
 # Control Matrix Benchmark Runner
 # =========================================================================
-QUANTUM_ARM_SPSA = dict(iterations=60, sample_size=32, lr=0.15, c0=0.15, clip=1.0, log_every=10)
+QUANTUM_ARM_SPSA = dict(iterations=300, sample_size=64, lr=0.5, c0=0.15, clip=2.0, log_every=50)
 CENTRALIZED_RESULTS_FILE = "centralized_training_results.json"
 
 def _measured_notes(history: List[Tuple[int, float]], y_te_pred: np.ndarray, y_te: np.ndarray, unit: str) -> str:
