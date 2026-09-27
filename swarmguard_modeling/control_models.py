@@ -356,6 +356,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         ])
         branch_record["models"]["QCNN"] = {
             "train_accuracy": acc_tr_qcnn, "test_accuracy": acc_te_qcnn, "test_macro_f1": f1_te_qcnn,
+            "attack_pred_rate": float(qcnn_y_te.mean() * 100.0), "train_seconds": t_qcnn,
             "loss_history": qcnn_history, "trained_weights": qcnn.weights.tolist()
         }
 
@@ -387,6 +388,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         ])
         branch_record["models"]["MLP"] = {
             "train_accuracy": acc_tr_mlp, "test_accuracy": acc_te_mlp, "test_macro_f1": f1_te_mlp,
+            "attack_pred_rate": float(mlp_y_te.mean() * 100.0), "train_seconds": t_mlp,
             "loss_history": mlp.loss_history
         }
 
@@ -418,6 +420,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         ])
         branch_record["models"]["MPS"] = {
             "train_accuracy": acc_tr_mps, "test_accuracy": acc_te_mps, "test_macro_f1": f1_te_mps,
+            "attack_pred_rate": float(mps_y_te.mean() * 100.0), "train_seconds": t_mps,
             "loss_history": mps.loss_history
         }
 
@@ -449,6 +452,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         ])
         branch_record["models"]["HE-VQC"] = {
             "train_accuracy": acc_tr_vqc, "test_accuracy": acc_te_vqc, "test_macro_f1": f1_te_vqc,
+            "attack_pred_rate": float(vqc_y_te.mean() * 100.0), "train_seconds": t_vqc,
             "loss_history": vqc.loss_history
         }
         run_record["branches"][branch] = branch_record
