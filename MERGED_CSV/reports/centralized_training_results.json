@@ -518,6 +518,8 @@
           "train_accuracy": 40.0,
           "test_accuracy": 34.66666666666667,
           "test_macro_f1": 0.3112818590704648,
+          "attack_pred_rate": 44.666666666666664,
+          "train_seconds": 228.4081530570984,
           "loss_history": [
             [
               0,
@@ -591,6 +593,8 @@
           "train_accuracy": 94.57142857142857,
           "test_accuracy": 92.66666666666666,
           "test_macro_f1": 0.8985177440186973,
+          "attack_pred_rate": 74.66666666666667,
+          "train_seconds": 5.894846439361572,
           "loss_history": [
             [
               0,
@@ -842,6 +846,8 @@
           "train_accuracy": 23.42857142857143,
           "test_accuracy": 21.333333333333336,
           "test_macro_f1": 0.17582417582417584,
+          "attack_pred_rate": 0.6666666666666667,
+          "train_seconds": 1.352522373199463,
           "loss_history": [
             [
               0,
@@ -913,6 +919,8 @@
           "train_accuracy": 50.28571428571429,
           "test_accuracy": 50.0,
           "test_macro_f1": 0.48796140366847207,
+          "attack_pred_rate": 37.333333333333336,
+          "train_seconds": 185.24159502983093,
           "loss_history": [
             [
               0,
@@ -1456,6 +1464,8 @@
           "train_accuracy": 60.285714285714285,
           "test_accuracy": 69.33333333333334,
           "test_macro_f1": 0.4094488188976378,
+          "attack_pred_rate": 100.0,
+          "train_seconds": 212.80865573883057,
           "loss_history": [
             [
               0,
@@ -1529,6 +1539,8 @@
           "train_accuracy": 90.85714285714286,
           "test_accuracy": 92.66666666666666,
           "test_macro_f1": 0.9121358964801107,
+          "attack_pred_rate": 71.33333333333334,
+          "train_seconds": 0.3269648551940918,
           "loss_history": [
             [
               0,
@@ -1780,6 +1792,8 @@
           "train_accuracy": 39.714285714285715,
           "test_accuracy": 30.666666666666664,
           "test_macro_f1": 0.23469387755102042,
+          "attack_pred_rate": 0.0,
+          "train_seconds": 2.0944175720214844,
           "loss_history": [
             [
               0,
@@ -1851,6 +1865,8 @@
           "train_accuracy": 58.57142857142858,
           "test_accuracy": 69.33333333333334,
           "test_macro_f1": 0.46495037220843677,
+          "attack_pred_rate": 96.0,
+          "train_seconds": 218.2295265197754,
           "loss_history": [
             [
               0,
