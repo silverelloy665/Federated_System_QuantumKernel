@@ -93,10 +93,11 @@ class CapacityMatchedMLP:
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray, epochs: int = 60, lr: float = 0.08, batch_size: int = 64):
         n_samples = len(X_train)
-        self.loss_history = [(0, binary_cross_entropy(self.forward(X_train), y_train))]
+        x_log, y_log = get_stratified_eval_sample(X_train, y_train, n_samples=min(2000, len(X_train)))
+        self.loss_history = [(0, binary_cross_entropy(self.forward(x_log), y_log))]
         for epoch in range(epochs):
             self._train_epoch(X_train, y_train, n_samples, lr, batch_size)
-            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(X_train), y_train)))
+            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(x_log), y_log)))
             if (epoch + 1) % 10 == 0 or epoch == 0:
                 print(f"      [MLP] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
@@ -189,10 +190,11 @@ class CapacityMatchedMPS:
 
     def fit(self, X_train: np.ndarray, y_train: np.ndarray, epochs: int = 15, lr: float = 0.08, batch_size: int = 64):
         n_samples = len(X_train)
-        self.loss_history = [(0, binary_cross_entropy(self.forward(X_train), y_train))]
+        x_log, y_log = get_stratified_eval_sample(X_train, y_train, n_samples=min(2000, len(X_train)))
+        self.loss_history = [(0, binary_cross_entropy(self.forward(x_log), y_log))]
         for epoch in range(epochs):
             self._train_epoch(X_train, y_train, n_samples, lr, batch_size)
-            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(X_train), y_train)))
+            self.loss_history.append((epoch + 1, binary_cross_entropy(self.forward(x_log), y_log)))
             print(f"      [MPS] epoch {epoch + 1:>3} train loss {self.loss_history[-1][1]:.4f}", flush=True)
 
     def _train_epoch(self, X_train: np.ndarray, y_train: np.ndarray, n_samples: int, lr: float, batch_size: int):
@@ -330,7 +332,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         print("  -> Running Arm (a): Proposed 12-Qubit QCNN + Re-upload...", flush=True)
         t0 = time.time()
         qcnn = QCNNModel(branch, 12)
-        qcnn.weights, qcnn_history = spsa_fit(qcnn.predict_proba, qcnn.weights, x_tr_eval, y_tr_eval,
+        qcnn.weights, qcnn_history = spsa_fit(qcnn.predict_proba, qcnn.weights, X_train, y_train,
                                               label="QCNN", **QUANTUM_ARM_SPSA)
         t_qcnn = time.time() - t0
         qcnn_preds_tr = qcnn.predict_proba(x_tr_eval)
@@ -361,7 +363,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         print("  -> Running Arm (b): Classical Capacity-Matched MLP (36 Params)...", flush=True)
         t0 = time.time()
         mlp = CapacityMatchedMLP(input_dim=12)
-        mlp.fit(x_tr_eval, y_tr_eval, epochs=60, lr=0.08)
+        mlp.fit(X_train, y_train, epochs=60, lr=0.08)
         t_mlp = time.time() - t0
 
         mlp_preds_tr = mlp.forward(x_tr_eval)
@@ -423,7 +425,7 @@ def run_control_matrix_benchmark() -> List[List[Any]]:
         print("  -> Running Arm (d): Standard Hardware-Efficient VQC (Barren Plateau Control, 36 Params)...", flush=True)
         t0 = time.time()
         vqc = HardwareEfficientVQC(num_qubits=12)
-        vqc.fit(x_tr_eval, y_tr_eval, **QUANTUM_ARM_SPSA)
+        vqc.fit(X_train, y_train, **QUANTUM_ARM_SPSA)
         t_vqc = time.time() - t0
 
         vqc_preds_tr = vqc.predict_proba(x_tr_eval)
