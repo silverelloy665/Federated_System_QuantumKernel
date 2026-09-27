@@ -184,3 +184,26 @@ def test_project_documentation_workbook(config):
             )
 
 
+def test_entrypoint_scripts_compile_cleanly():
+    import py_compile
+    entrypoint = repo_root / "preprocess_uav_ids.py"
+    if entrypoint.exists():
+        try:
+            py_compile.compile(str(entrypoint), doraise=True)
+        except py_compile.PyCompileError as e:
+            pytest.fail(f"preprocess_uav_ids.py failed compilation: {e}")
+
+
+def test_cross_check_branch_specific_thresholds(config):
+    import json
+    report_file = config.reports_dir / "ibm_quantum_cross_check.json"
+    if not report_file.exists():
+        report_file = repo_root / "reports" / "ibm_quantum_cross_check.json"
+    if not report_file.exists():
+        pytest.skip("ibm_quantum_cross_check.json not found")
+    with open(report_file) as f:
+        data = json.load(f)
+    thresholds = data.get("verification_thresholds", data)
+    assert "max_cross_fidelity_phys" in thresholds
+    assert "max_cross_fidelity_net" in thresholds
+    assert thresholds["max_cross_fidelity_phys"] != thresholds["max_cross_fidelity_net"]
