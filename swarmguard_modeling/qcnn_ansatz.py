@@ -42,8 +42,8 @@ class QCNNCircuitBuilder:
 
     def pool_block(self, qc: QuantumCircuit, q_source: int, q_target: int, param: Parameter):
         """2-qubit parameterized pooling block (source -> target)."""
-        qc.crz(param, q_source, q_target)
-        qc.cx(q_target, q_source)
+        qc.crx(param, q_source, q_target)
+        qc.cx(q_source, q_target)
 
     def build_circuit(self) -> Tuple[QuantumCircuit, ParameterVector, ParameterVector]:
         """
