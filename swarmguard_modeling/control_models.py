@@ -160,7 +160,7 @@ class CapacityMatchedMPS:
     def __init__(self, num_sites: int = 12):
         self.num_sites = num_sites
         np.random.seed(42)
-        self.params = np.random.randn(36) * 0.01
+        self.params = np.random.randn(36) * 0.15
         self.num_params = 36
 
     def contract_sample(self, x: np.ndarray, p: np.ndarray) -> float:
@@ -239,7 +239,7 @@ class HardwareEfficientVQC:
         self.num_qubits = num_qubits
         self.num_params = 36
         np.random.seed(42)
-        self.weights = np.random.uniform(-0.01, 0.01, size=36)
+        self.weights = np.random.uniform(-np.pi/4, np.pi/4, size=36)
         
         self.x_params = ParameterVector('x', 12)
         self.theta_params = ParameterVector('theta', 36)
