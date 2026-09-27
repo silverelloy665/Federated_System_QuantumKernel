@@ -35,8 +35,6 @@ def test_label_mapping_report_agreement(config):
     """Fails CI if reports/label_mapping.csv disagrees with the authoritative taxonomy."""
     report_file = config.reports_dir / "label_mapping.csv"
     if not report_file.exists():
-        report_file = repo_root / "reports" / "label_mapping.csv"
-    if not report_file.exists():
         pytest.skip(f"Report not found at {report_file} (run pipeline first)")
 
     df_lbl = pd.read_csv(report_file)
@@ -76,8 +74,6 @@ def test_feature_mapping_report(config):
     """Verifies feature_mapping.csv logs auditable decisions and match types."""
     report_file = config.reports_dir / "feature_mapping.csv"
     if not report_file.exists():
-        report_file = repo_root / "reports" / "feature_mapping.csv"
-    if not report_file.exists():
         pytest.skip(f"Report not found at {report_file}")
 
     df_feat = pd.read_csv(report_file)
@@ -92,8 +88,6 @@ def test_dataset_inventory_sampling_disclosure(config):
     """Verifies dataset_inventory.csv has rows_available, rows_sampled, and sampling_method (Issue #4)."""
     report_file = config.reports_dir / "dataset_inventory.csv"
     if not report_file.exists():
-        report_file = repo_root / "reports" / "dataset_inventory.csv"
-    if not report_file.exists():
         pytest.skip(f"Report not found at {report_file}")
 
     df_inv = pd.read_csv(report_file)
@@ -104,8 +98,6 @@ def test_dataset_inventory_sampling_disclosure(config):
 def test_quantum_bounds_and_leakage(config):
     """Verifies data leakage report and quantum Pauli angle constraints [-pi, pi]."""
     report_file = config.reports_dir / "data_leakage_report.csv"
-    if not report_file.exists():
-        report_file = repo_root / "reports" / "data_leakage_report.csv"
     if not report_file.exists():
         pytest.skip(f"Report not found at {report_file}")
 
